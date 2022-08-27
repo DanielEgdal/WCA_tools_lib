@@ -1,0 +1,18 @@
+<html>
+    <head>
+        <script type="module">
+            import init, {initialize} from "./pkg/group_menu.js";
+            document.getElementById("submit").query = "?EVENT";
+            init().then(() => {
+                initialize("DATA", NUMBER);
+            });
+        </script>
+    </head>
+    <body>
+        <table id="table">
+            <tr>
+            </tr>
+        </table>
+        <a id="submit">Submit!</a>
+    </body>
+</html>

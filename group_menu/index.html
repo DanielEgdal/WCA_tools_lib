@@ -1,0 +1,18 @@
+<html>
+    <head>
+        <script type="module">
+            import init, {initialize} from "./pkg/group_menu.js";
+            document.getElementById("submit").query = "?yes=set";
+            init().then(() => {
+                initialize("23\rghy\n34\rhty\n7\rtest\n13\rm\n12\rst", 5);
+            });
+        </script>
+    </head>
+    <body>
+        <table id="table">
+            <tr>
+            </tr>
+        </table>
+        <a id="submit">Submit!</a>
+    </body>
+</html>

@@ -1,0 +1,9 @@
+[package]
+name = "ages"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+wca_oauth = { path = "../wca_oauth" }
