@@ -146,7 +146,7 @@ fn try_update_wcif(wcif: &mut WcifOAuth, scorecards: &[Scorecard]) -> Result<(),
             }
             event[scorecard.group - 1].push((scorecard.id, scorecard.station));
         }
-        for ((event, round), groups) in event_map {
+        /*for ((event, round), groups) in event_map {
             let activities = wcif.add_groups_to_event(event, round, groups.len()).map_err(|_|format!("Unable to add groups to event: {event}. This may be because groups are already created or the event does not exist."))?;
             let acts = activities.iter().map(|act|act.id).collect::<Vec<_>>();
             for (group, activity_id) in groups.into_iter().zip(acts) {
@@ -159,7 +159,7 @@ fn try_update_wcif(wcif: &mut WcifOAuth, scorecards: &[Scorecard]) -> Result<(),
 
                 }
             }
-        }
+        }*/
     Ok(())
 }
 
