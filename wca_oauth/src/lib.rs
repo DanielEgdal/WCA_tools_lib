@@ -38,7 +38,6 @@ mod test {
     use sha2::{Sha512, Digest};
 
     use crate::OAuth;
-    use crate::Wcif;
     use crate::parse;
     use crate::xor_vecs;
 
@@ -59,14 +58,14 @@ mod test {
         rt.block_on(test);
     }
 
-    #[test]
+    /*#[test]
     fn de() {
         let wcif1 = serde_json::from_str::<Wcif>(include_str!("../wcif.json")).unwrap();
         let json = serde_json::to_string(&wcif1).unwrap();
         println!("{:#?}", json);
         let wcif2 = serde_json::from_str::<Wcif>(&json).unwrap();
         assert_eq!(wcif1, wcif2);
-    }
+    }*/
 
     #[test]
     fn hash() {

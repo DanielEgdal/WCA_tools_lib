@@ -262,7 +262,7 @@ impl WcifContainer {
             .collect()
     }
 
-    /*pub fn add_groups_to_event(&mut self, event: &str, round: usize, no: usize) -> std::result::Result<&mut Vec<Activity>, ()> {
+    pub fn add_groups_to_event(&mut self, event: &str, round: usize, no: usize) -> std::result::Result<&mut Vec<Activity>, ()> {
         let act = self.wcif.schedule.venues.iter_mut()
             .flat_map(|v|&mut v.rooms)
             .flat_map(|r|&mut r.activities)
@@ -272,16 +272,20 @@ impl WcifContainer {
                     return None;
                 }
                 a.child_activities = (0..no).map(|g|{
-                    let group_time = (a.end_time - a.start_time) / no;
-                        Activity { 
-                            id: a.id * 1000 + g, 
-                            name: format!("{}, Group {}", a.name, g + 1), 
-                            activity_code: format!("{}-g{}", a.activity_code, g + 1), 
-                            start_time: group_time * g + a.start_time, 
-                            end_time: group_time * (g + 1) + a.start_time, 
-                            child_activities: vec![], 
-                            scramble_set_id: None, 
-                            extensions: vec![] }
+                    let group_time = (a.end_time - a.start_time) / no as i32;
+                    let start_time = a.start_time + (group_time * g as i32);
+                    let end_time = a.start_time + (group_time * (g as i32 + 1));
+                    println!("{:?}", start_time);
+                    println!("{:?}", end_time);
+                    Activity { 
+                        id: a.id * 1000 + g, 
+                        name: format!("{}, Group {}", a.name, g + 1), 
+                        activity_code: format!("{}-g{}", a.activity_code, g + 1), 
+                        start_time, 
+                        end_time, 
+                        child_activities: vec![], 
+                        scramble_set_id: None, 
+                        extensions: vec![] }
                     })
                     .collect();
                 Some(a)
@@ -292,7 +296,7 @@ impl WcifContainer {
             }
             _ => Err(())
         }
-    }*/
+    }
 }
 
 struct ActivityIter<'a> {

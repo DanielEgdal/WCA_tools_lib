@@ -78,15 +78,14 @@ pub async fn pdf(db: DB, query: HashMap<String, String>, socket: Option<SocketAd
         .collect();
     let bytes = crate::pdf::run_from_wcif(wcif_oauth.as_mut().unwrap(), eventid, round, groups, &stages).await;
 
-    //wcif_oauth.as_mut().unwrap().activity_iter().for_each(|act|{
-    //    println!("{:?}", act);
-    //});
-
-    //let str = wcif_oauth.as_mut().unwrap().patch().await;
-
-    //println!("{}", str);
-
     match bytes {
+        Ok(_) => {
+            wcif_oauth.as_mut().unwrap().patch().await;
+        },
+        Err(_) => println!("Unable to patch likely because the given event already has groups in the wcif."),
+    }
+
+    match bytes.unwrap_or_else(|e| e) {
         Return::Pdf(bytes) => {
             Response::builder()
                 .header("content-type", "application/pdf")

@@ -145,10 +145,10 @@ pub fn run(groups_csv: &str, limit_csv: &str, competition: &str, language: Langu
     });
 
     //Generate pdf
-    scorecards_to_pdf(k, competition, &map, &limits, language, wcif)
+    scorecards_to_pdf(k, competition, &map, &limits, language, wcif).unwrap_or_else(|e| e)
 }
 
-pub async fn run_from_wcif(wcif: &mut WcifOAuth, event: &str, round: usize, groups: Vec<Vec<usize>>, stages: &Option<Stages>) -> Return {
+pub async fn run_from_wcif(wcif: &mut WcifOAuth, event: &str, round: usize, groups: Vec<Vec<usize>>, stages: &Option<Stages>) -> Result<Return, Return> {
     let (map, limit, competition) = crate::wcif::get_scorecard_info_for_round(wcif, event, round);
 
     //Unwrap should not fail as the existence of this round is already confirmed at this point.
