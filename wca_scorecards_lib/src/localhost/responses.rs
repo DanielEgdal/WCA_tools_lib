@@ -87,7 +87,7 @@ pub async fn pdf(db: DB, query: HashMap<String, String>, socket: Option<SocketAd
                     //This runs in O(nm) time which is horrible, when it could run in O(n) time but n and m are both small so i will let it be for now :)
                     wcif_oauth.patch_persons(|person|{
                         if person.registrant_id == Some(*id) {
-                            person.assignments.push(Assignment { activity_id, assignment_code: AssignmentCode::Competitor, station_number: Some(station) })
+                            person.assignments.push(Assignment { activity_id, assignment_code: AssignmentCode::Competitor, station_number: Some(station + 1) })
                         }
                     })
                 }
