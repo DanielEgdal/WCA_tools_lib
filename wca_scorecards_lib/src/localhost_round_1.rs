@@ -43,9 +43,9 @@ async fn root(groups_csv: String, limit_csv: String, id: String, query: HashMap<
     let json = oauth.get_wcif(&id).await;
     let body = match json {
         Ok(json) => {
-            let mut wcif = json.add_oauth(oauth);
+            let wcif = json.add_oauth(oauth);
             let name = wcif.get().name.clone();
-            let pdf = run(&groups_csv, &limit_csv, &name, Language::english(), Some(&mut wcif), None);
+            let pdf = run(&groups_csv, &limit_csv, &name, Language::english(), None);
             wcif.patch().await;
             match pdf {
                 Return::Pdf(b) => b,

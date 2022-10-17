@@ -3,6 +3,7 @@ use super::*;
 use super::DB;
 
 use scorecard_to_pdf::Return;
+use wca_oauth::{Assignment, AssignmentCode};
 
 pub fn is_localhost(socket: Option<SocketAddr>) -> Result<(), Rejection> {
     if let Some(socket) = socket {
@@ -76,16 +77,29 @@ pub async fn pdf(db: DB, query: HashMap<String, String>, socket: Option<SocketAd
                 .collect()
         })
         .collect();
-    let bytes = crate::pdf::run_from_wcif(wcif_oauth.as_mut().unwrap(), eventid, round, groups, &stages).await;
 
-    match bytes {
-        Ok(_) => {
-            wcif_oauth.as_mut().unwrap().patch().await;
-        },
-        Err(_) => println!("Unable to patch likely because the given event already has groups in the wcif."),
+    let wcif_oauth = wcif_oauth.as_mut().unwrap();
+    match wcif_oauth.add_groups_to_event(eventid, round, groups.len()) {
+        Ok(activities) => {
+            let activity_ids: Vec<_> = activities.into_iter().map(|act| act.id).collect();
+            for (group, activity_id) in groups.iter().zip(activity_ids) {
+                for (station, id) in group.into_iter().enumerate() {
+                    //This runs in O(nm) time which is horrible, when it could run in O(n) time but n and m are both small so i will let it be for now :)
+                    wcif_oauth.patch_persons(|person|{
+                        if person.registrant_id == Some(*id) {
+                            person.assignments.push(Assignment { activity_id, assignment_code: AssignmentCode::Competitor, station_number: Some(station) })
+                        }
+                    })
+                }
+            }
+            wcif_oauth.patch().await;
+        }
+        Err(()) => println!("Unable to patch likely because the given event already has groups in the wcif."),
     }
 
-    match bytes.unwrap_or_else(|e| e) {
+    let bytes = crate::pdf::run_from_wcif(wcif_oauth, eventid, round, groups, &stages);
+
+    match bytes {
         Return::Pdf(bytes) => {
             Response::builder()
                 .header("content-type", "application/pdf")

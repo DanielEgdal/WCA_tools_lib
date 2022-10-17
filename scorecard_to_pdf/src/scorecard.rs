@@ -1,5 +1,4 @@
 use printpdf::PdfDocumentReference;
-use wca_oauth::{WcifOAuth, Assignment, AssignmentCode};
 use std::collections::HashMap;
 use std::io::Write;
 use crate::language::Language;
@@ -30,11 +29,7 @@ pub enum Return {
     Pdf(Vec<u8>)
 }
 
-pub fn scorecards_to_pdf(scorecards: Vec<Scorecard>, competition: &str, map: &HashMap<usize, String>, limits: &HashMap<&str, TimeLimit>, language: Language, wcif: Option<&mut WcifOAuth>) -> Result<Return, Return> {
-    let mut res = Ok(());
-    if let Some(wcif) = wcif {
-        res = try_update_wcif(wcif, &scorecards);
-    }
+pub fn scorecards_to_pdf(scorecards: Vec<Scorecard>, competition: &str, map: &HashMap<usize, String>, limits: &HashMap<&str, TimeLimit>, language: Language) -> Return {
     let mut buckets = HashMap::new();
     for scorecard in scorecards {
         let key = scorecard.stage;
@@ -47,7 +42,7 @@ pub fn scorecards_to_pdf(scorecards: Vec<Scorecard>, competition: &str, map: &Ha
             }
         }
     }
-    let ret = if buckets.len() == 1 {
+    if buckets.len() == 1 {
         Return::Pdf(scorecards_to_pdf_internal(buckets.into_values().next().unwrap(), competition, map, limits, &language).save_to_bytes().unwrap())
     }
     else {
@@ -64,10 +59,6 @@ pub fn scorecards_to_pdf(scorecards: Vec<Scorecard>, competition: &str, map: &Ha
         zip.finish().unwrap();
         drop(zip);
         Return::Zip(buf)
-    };
-    match res {
-        Ok(_) => Ok(ret),
-        Err(_) => Err(ret),
     }
 }
 
@@ -101,38 +92,3 @@ pub fn scorecards_to_pdf_internal(scorecards: Vec<Scorecard>, competition: &str,
     }
     scorecard_generator.doc()
 }
-
-fn try_update_wcif(wcif: &mut WcifOAuth, scorecards: &[Scorecard]) -> Result<(), String> {
-    let mut event_map = HashMap::new();
-        for scorecard in scorecards.iter() {
-            let event = match event_map.get_mut(&(scorecard.event, scorecard.round)) {
-                Some(v) => {
-                    v
-                }
-                None => {
-                    event_map.insert((scorecard.event, scorecard.round), vec![]);
-                    event_map.get_mut(&(scorecard.event, scorecard.round)).unwrap()
-                }
-            };
-            while event.len() < scorecard.group {
-                event.push(vec![]);
-            }
-            event[scorecard.group - 1].push((scorecard.id, scorecard.station));
-        }
-        for ((event, round), groups) in event_map {
-            let activities = wcif.add_groups_to_event(event, round, groups.len()).map_err(|_|format!("Unable to add groups to event: {event}. This may be because groups are already created or the event does not exist."))?;
-            let acts = activities.iter().map(|act|act.id).collect::<Vec<_>>();
-            for (group, activity_id) in groups.into_iter().zip(acts) {
-                for (id, station) in group {
-                    wcif.patch_persons(|person|{
-                        if person.registrant_id == Some(id) {
-                            person.assignments.push(Assignment { activity_id, assignment_code: AssignmentCode::Competitor, station_number: station })
-                        }
-                    })
-
-                }
-            }
-        }
-    Ok(())
-}
-

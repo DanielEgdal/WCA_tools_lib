@@ -2,7 +2,7 @@ use std::{collections::HashMap, io::Write};
 use std::fs::File;
 use crate::wcif::get_round_json;
 use scorecard_to_pdf::{Scorecard, TimeLimit, scorecards_to_pdf, Language};
-use wca_oauth::WcifOAuth;
+use wca_oauth::WcifContainer;
 use scorecard_to_pdf::Return;
 
 #[derive(Clone)]
@@ -48,7 +48,7 @@ pub fn stage_ident(station: Option<usize>, stages: &Option<Stages>) -> Option<&s
     panic!("Invalid station number given: {}", org)
 }
 
-pub fn run(groups_csv: &str, limit_csv: &str, competition: &str, language: Language, wcif: Option<&mut WcifOAuth>, stages: Option<Stages>) -> Return {
+pub fn run(groups_csv: &str, limit_csv: &str, competition: &str, language: Language, stages: Option<Stages>) -> Return {
     let mut groups_csv = groups_csv.lines();
     //Header describing csv file formatting. First two are fixed and therfore skipped.
     //Unwrap cannot fail because the first element of lines always exists, although skip can lead
@@ -145,10 +145,10 @@ pub fn run(groups_csv: &str, limit_csv: &str, competition: &str, language: Langu
     });
 
     //Generate pdf
-    scorecards_to_pdf(k, competition, &map, &limits, language, wcif).unwrap_or_else(|e| e)
+    scorecards_to_pdf(k, competition, &map, &limits, language)
 }
 
-pub async fn run_from_wcif(wcif: &mut WcifOAuth, event: &str, round: usize, groups: Vec<Vec<usize>>, stages: &Option<Stages>) -> Result<Return, Return> {
+pub fn run_from_wcif(wcif: &mut WcifContainer, event: &str, round: usize, groups: Vec<Vec<usize>>, stages: &Option<Stages>) -> Return {
     let (map, limit, competition) = crate::wcif::get_scorecard_info_for_round(wcif, event, round);
 
     //Unwrap should not fail as the existence of this round is already confirmed at this point.
@@ -212,7 +212,7 @@ pub async fn run_from_wcif(wcif: &mut WcifOAuth, event: &str, round: usize, grou
         }).flatten()
         .collect::<Vec<_>>();
     
-    scorecards_to_pdf(k, &competition, &map, &limits, Language::english(), Some(wcif))
+    scorecards_to_pdf(k, &competition, &map, &limits, Language::english())
 }
 
 fn usize_from_iter<'a, I>(iter: &mut I) -> usize where I: Iterator<Item = &'a str> {

@@ -161,10 +161,10 @@ pub fn get_width_of_string(font: &Font, string: &str, font_size: f64) -> f64 {
     let mut width = 0.0;
     for char in string.chars() {
         if !char.is_whitespace() {
-            let id = font.glyph_for_char(char).unwrap();
-            let glyph_width = font.advance(id).unwrap().x();
-            width += glyph_width
-
+            if let Some(id) = font.glyph_for_char(char) {
+                let glyph_width = font.advance(id).unwrap().x();
+                width += glyph_width
+            }
         } else {
             width += upem as f32 / 4.0;
         }
