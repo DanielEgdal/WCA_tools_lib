@@ -275,8 +275,6 @@ impl WcifContainer {
                     let group_time = (a.end_time - a.start_time) / no as i32;
                     let start_time = a.start_time + (group_time * g as i32);
                     let end_time = a.start_time + (group_time * (g as i32 + 1));
-                    println!("{:?}", start_time);
-                    println!("{:?}", end_time);
                     Activity { 
                         id: a.id * 1000 + g, 
                         name: format!("{}, Group {}", a.name, g + 1), 

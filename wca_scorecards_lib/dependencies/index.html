@@ -3,6 +3,11 @@
         <script type="module">
             import init, {initialize} from "./pkg/group_menu.js";
             document.getElementById("submit").query = "?EVENT";
+            let checkbox = document.getElementById("accept");
+            let submut = document.getElementById("submit");
+            checkbox.addEventListener("change", () => {
+                submit.href = submit.prething + checkbox.checked;
+            })
             init().then(() => {
                 initialize("DATA", NUMBER);
             });
@@ -13,6 +18,11 @@
             <tr>
             </tr>
         </table>
-        <a id="submit">Submit!</a>
+        <label for="accept">
+            Do you want to patch the groups to wcif? 
+            <input type="checkbox" id="accept" name="accept" value="yes"> 
+        </label>
+        <br>
+        <a id="submit"><button>Submit!</button></a>
     </body>
 </html>
