@@ -48,9 +48,9 @@ mod test {
     #[test]
     fn everything() {
         let mut stages = Stages::new();
-        stages.add_stage(Some("R".to_string()), 70);
-        stages.add_stage(Some("G".to_string()), 70);
-        stages.add_stage(Some("B".to_string()), 70);
+        stages.add_stage(Some("R".to_string()), 10);
+        stages.add_stage(Some("G".to_string()), 10);
+        stages.add_stage(Some("B".to_string()), 10);
 
         //crate::print_round_1_english("files/OstervangOpen2022stationNumbers.csv", "files/OstervangOpen2022timeLimits.csv", "Østervang Open 2022", Some(stages));
         crate::print_subsequent_rounds("danishchampionship2022".to_string(), Some(stages));

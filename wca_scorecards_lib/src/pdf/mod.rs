@@ -7,7 +7,7 @@ use scorecard_to_pdf::Return;
 
 #[derive(Clone)]
 pub struct Stages {
-    data: Vec<(Option<String>, usize)>
+    pub(crate) data: Vec<(Option<String>, usize)>
 }
 
 impl Stages {
@@ -148,65 +148,26 @@ pub fn run(groups_csv: &str, limit_csv: &str, competition: &str, language: Langu
     scorecards_to_pdf(k, competition, &map, &limits, language)
 }
 
-pub fn run_from_wcif(wcif: &mut WcifContainer, event: &str, round: usize, groups: Vec<Vec<usize>>, stages: &Option<Stages>) -> Return {
+pub fn run_from_wcif(wcif: &mut WcifContainer, event: &str, round: usize, groups: Vec<Vec<(usize, usize)>>, stages: &Option<Stages>) -> Return {
     let (map, limit, competition) = crate::wcif::get_scorecard_info_for_round(wcif, event, round);
 
     //Unwrap should not fail as the existence of this round is already confirmed at this point.
     get_round_json(wcif, event, round).unwrap().scramble_set_count = groups.len();
-
     let mut limits = HashMap::new();
     limits.insert(event, limit);
 
     let k = groups.into_iter()
-        .enumerate()
-        .map(|(n, group)|{
-            let size = group.len();
-            let (no_of_stages, stage_capacity) = if let Some(stages) = stages {
-                let mut size_left = size;
-                let mut no_of_stages = 0;
-                let mut stage_capacity = 0;
-                for stage in stages.data.iter() {
-                    no_of_stages += 1;
-                    stage_capacity += stage.1;
-                    if size_left > stage.1 {
-                        size_left -= stage.1;
-                    }
-                    else {
-                        break;
-                    }
-                }
-                (no_of_stages, stage_capacity)
-            }
-            else {
-                (1, size)
-            };
-            let over_capacity = stage_capacity - size;
-            let over_per_stage = over_capacity / no_of_stages;
-            let leftover = over_capacity - over_per_stage * no_of_stages;
-            let mut current_offset = 0;
-            let mut remaining_on_stage = if let Some(stages) = stages {
-                stages.data[0].1 - over_per_stage
-            }
-            else {
-                size
-            };
-            let mut current_stage = 0;
+        .zip(1..)
+        .map(|(group, n)|{
             group.into_iter()
-                .enumerate()
-                .map(move |(station, id)|{
-                    if remaining_on_stage == 0 {
-                        current_offset += over_per_stage + if  current_stage >= no_of_stages - leftover { 1 } else { 0 };
-                        current_stage += 1;
-                        remaining_on_stage = stages.as_ref().unwrap().data[current_stage].1 - over_per_stage - if current_stage >= no_of_stages - leftover { 1 } else { 0 };
-                    }
-                    remaining_on_stage -= 1;
+                .map(move |(id, station)|{
                     Scorecard {
                         event,
                         round,
-                        group: n + 1,
-                        station: Some(station + 1 + current_offset),
+                        group: n,
+                        station: Some(station),
                         id,
-                        stage: stage_ident(Some(station + 1 + current_offset), &stages)
+                        stage: stage_ident(Some(station), stages)
                     }
                 })
         }).flatten()

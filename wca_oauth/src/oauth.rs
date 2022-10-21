@@ -1,11 +1,8 @@
-use core::panic;
 use std::collections::HashMap;
 
 use reqwest::Client;
 use serde::Deserialize;
-use sha2::{Sha512, Digest};
 use crate::*;
-use std::io::{Write, Read};
 
 #[derive(Deserialize)]
 struct AuthResponse {
@@ -24,51 +21,6 @@ pub struct OAuth {
 }
 
 impl OAuth {
-    pub async fn get_auth_with_password(client_id: String, client_secret: String, redirect_uri: String) -> Self {
-        let mut oauth = Self {
-            access_token: format!(""),
-            refresh_token: format!(""),
-            client_id,
-            client_secret,
-            redirect_uri,
-            client: reqwest::Client::new()
-        };
-
-        let refresh = std::fs::read("refresh");
-        match refresh {
-            Ok(data) => {
-                println!("Please enter your password:");
-                std::io::stdout().flush().unwrap();
-                let password = rpassword::read_password().unwrap();
-                let decrypted = xor_password(&password, &data);
-                match String::from_utf8(decrypted) {
-                    Ok(refresh_token) => {
-                        oauth.refresh_token = refresh_token;
-                        oauth.refresh_auth().await;
-                        let encrypted = xor_password(&password, &oauth.refresh_token.clone().as_bytes().to_vec());
-                        let mut file = std::fs::File::create("refresh").unwrap();
-                        file.write_all(&encrypted).expect("I do not know what the problem is");
-                    }
-                    Err(_) => panic!("Incorrect password. Please restart")
-                }
-            }
-            Err(_) => {
-                println!("Please enter a valid auth code for the given client:");
-                let mut code = String::new();
-                std::io::stdin().read_line(&mut code).expect("OS error 97");
-                let auth = oauth.get_auth_normal_flow(code.trim().to_string());
-                println!("Please enter a password:");
-                std::io::stdout().flush().unwrap();
-                let password = rpassword::read_password().unwrap();
-                let mut file = std::fs::File::create("refresh").unwrap();
-                auth.await;
-                let encrypted = xor_password(&password, &oauth.refresh_token.clone().as_bytes().to_vec());
-                file.write_all(&encrypted).expect("I do not know what the problem is");
-            }
-        };
-        oauth
-    }
-
     pub async fn get_auth(client_id: String, client_secret: String, redirect_uri: String, auth_code: String) -> Self {
         let mut oauth = Self {
             access_token: format!(""),
@@ -107,7 +59,7 @@ impl OAuth {
         self.refresh_token = auth_response.refresh_token;
     }
 
-    async fn refresh_auth(&mut self) {
+    pub async fn refresh_auth(&mut self) {
         let mut params = HashMap::new();
 
         params.insert("grant_type", "refresh_token");
@@ -170,7 +122,7 @@ impl OAuth {
 
 #[derive(Debug)]
 pub struct WcifContainer {
-    wcif: Wcif
+    pub(crate) wcif: Wcif
 }
 
 impl WcifContainer {
@@ -329,28 +281,4 @@ impl<'a> Iterator for ActivityIter<'a> {
             None
         }
     }
-}
-
-fn xor_password(password: &str, data: &Vec<u8>) -> Vec<u8> {
-    let mut hasher = Sha512::new();
-    for _ in 0..100000 {
-        hasher.update(password);
-    }
-    let f = hasher.finalize();
-    let g: std::result::Result<Vec<u8>, std::io::Error> = f.bytes().collect();
-    let sha_bytes = g.unwrap();
-    xor_vecs(sha_bytes, data)
-}
-
-
-pub fn xor_vecs(mut hash: Vec<u8>, refresh: &Vec<u8>) -> Vec<u8> {
-    for i in 0..64 {
-        if i < refresh.len() {
-            hash[i] ^= refresh[i];
-        }
-    }
-    while hash.last() == Some(&0) {
-        hash.pop();
-    }
-    hash
 }
