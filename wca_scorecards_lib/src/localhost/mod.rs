@@ -17,7 +17,7 @@ type DB = Arc<Mutex<Option<WcifOAuth>>>;
 #[tokio::main]
 pub async fn init(id: String, stages: Option<Stages>) {
     //Url to approve the Oauth application
-    let auth_url = "https://www.worldcubeassociation.org/oauth/authorize?client_id=TDg_ARkGANTJB_z0oeUWBVl66a1AYdYAxc-jPJIhSfY&redirect_uri=http%3A%2F%2Flocalhost%3A5000%2F&response_type=code&scope=public+manage_competitions";
+    let auth_url = "https://www.worldcubeassociation.org/oauth/authorize?client_id=nqbnCQGGO605D_XYpgghZdIN2jDT67LhhUC1kE-Msuk&redirect_uri=http%3A%2F%2Flocalhost%3A5000%2F&response_type=token&scope=public+manage_competitions";
 
     //Mutex for storing the authentification code for async reasons.
     let wcif: DB = Arc::new(Mutex::new(None));

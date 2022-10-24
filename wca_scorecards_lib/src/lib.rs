@@ -5,7 +5,6 @@ mod pdf;
 pub(crate) mod wcif;
 mod localhost;
 mod compiled;
-mod localhost_round_1;
 
 pub use pdf::Stages;
 
@@ -33,12 +32,6 @@ pub fn print_round_1_english(groups_csv: &str, limit_csv: &str, competition: &st
     let groups_csv = std::fs::read_to_string(groups_csv).unwrap();
     let limit_csv = std::fs::read_to_string(limit_csv).unwrap();
     save_pdf(run(&groups_csv, &limit_csv, competition, Language::english(), stages), competition).unwrap();
-}
-
-pub fn print_round_1_with_patch(groups_csv: &str, limit_csv: &str, id: &str) {
-    let groups_csv = std::fs::read_to_string(groups_csv).unwrap();
-    let limit_csv = std::fs::read_to_string(limit_csv).unwrap();
-    localhost_round_1::init(id.to_string(), groups_csv, limit_csv);
 }
 
 #[cfg(test)]
