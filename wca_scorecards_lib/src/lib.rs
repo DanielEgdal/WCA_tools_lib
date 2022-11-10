@@ -8,6 +8,20 @@ mod compiled;
 
 pub use pdf::Stages;
 
+static mut LOGGING: bool = false;
+
+pub fn set_logging(b: bool) {
+    unsafe {
+        LOGGING = b;
+    }
+}
+
+pub(crate) fn read_logging() -> bool {
+    unsafe {
+        LOGGING
+    }
+}
+
 #[allow(deprecated)]
 #[deprecated]
 pub fn print_round_1<I>(args: &mut I) where I: Iterator<Item = String> {

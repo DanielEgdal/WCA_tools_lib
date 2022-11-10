@@ -2,6 +2,8 @@ use super::*;
 
 use super::DB;
 
+use crate::read_logging;
+
 use scorecard_to_pdf::Return;
 use wca_oauth::{Assignment, AssignmentCode};
 
@@ -17,6 +19,10 @@ pub fn is_localhost(socket: Option<SocketAddr>) -> Result<(), Rejection> {
 }
 
 pub async fn root(db: DB, id: String, query: HashMap<String, String>, socket: Option<SocketAddr>) -> Result<Response<String>, Rejection> {
+    if read_logging() {
+        println!("Received request on root from {socket:?} for competition {id:?} with query: \n{query:#?}");
+    }
+
     is_localhost(socket)?;
     if !query.contains_key("access_token") {
         return Response::builder()
