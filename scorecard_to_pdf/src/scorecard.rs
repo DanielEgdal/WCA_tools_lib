@@ -133,3 +133,15 @@ pub fn scorecards_to_pdf_internal(scorecards: Vec<Scorecard>, competition: &str,
     }
     scorecard_generator.doc()
 }
+
+pub fn blank_scorecard_page(competition: &str, language: &Language) -> Return {
+    let mut scorecard_generator = ScorecardGenerator::new(competition);
+    scorecard_generator.set_page(0);
+    let map = HashMap::new();
+    let limits = HashMap::new();
+    for i in 0..6 {
+        scorecard_generator.set_position(i);
+        draw_scorecard(&mut scorecard_generator, &MaybeScorecard::Blank, &map, &limits, language)
+    }
+    Return::Pdf(scorecard_generator.doc().save_to_bytes().unwrap())
+}

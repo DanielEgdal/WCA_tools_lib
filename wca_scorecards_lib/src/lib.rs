@@ -48,6 +48,10 @@ pub fn print_round_1_english(groups_csv: &str, limit_csv: &str, competition: &st
     save_pdf(run(&groups_csv, &limit_csv, competition, Language::english(), stages), competition).unwrap();
 }
 
+pub fn blank_scorecard_page(competition: &str) {
+    save_pdf(scorecard_to_pdf::blank_scorecard_page(competition, &Language::english()), competition).unwrap();
+}
+
 #[cfg(test)]
 mod test {
     use crate::Stages;
@@ -60,6 +64,7 @@ mod test {
         stages.add_stage(Some("B".to_string()), 10);
 
         //crate::print_round_1_english("files/OstervangOpen2022stationNumbers.csv", "files/OstervangOpen2022timeLimits.csv", "Østervang Open 2022", Some(stages));
-        crate::print_subsequent_rounds("danishchampionship2022".to_string(), Some(stages));
+        //crate::print_subsequent_rounds("danishchampionship2022".to_string(), Some(stages));
+        crate::blank_scorecard_page("testthing");
     }
 }
