@@ -45,11 +45,11 @@ pub fn print_subsequent_rounds(competition_id: String, stages: Stages) {
 pub fn print_round_1_english(groups_csv: &str, limit_csv: Option<String>, competition: &str, stages: Stages) {
     let groups_csv = std::fs::read_to_string(groups_csv).unwrap();
     let limit_csv = limit_csv.map(|x| std::fs::read_to_string(x).unwrap());
-    save_pdf(run(&groups_csv, limit_csv, competition, Language::english(), stages), competition).unwrap();
+    save_pdf(run(&groups_csv, limit_csv, competition, Language::english(), stages), competition, "").unwrap();
 }
 
 pub fn blank_scorecard_page(competition: &str) {
-    save_pdf(scorecard_to_pdf::blank_scorecard_page(competition, &Language::english()), competition).unwrap();
+    save_pdf(scorecard_to_pdf::blank_scorecard_page(competition, &Language::english()), competition, "blank_").unwrap();
 }
 
 #[cfg(test)]

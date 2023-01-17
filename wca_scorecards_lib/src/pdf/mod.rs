@@ -17,12 +17,13 @@ impl Stages {
     }
 }
 
-pub fn save_pdf(data: Return, competition: &str) -> std::io::Result<()> {
+pub fn save_pdf(data: Return, competition: &str, prefix: &str) -> std::io::Result<()> {
     let (data, name) = match data {
         Return::Pdf(b) => (b, ".pdf"),
         Return::Zip(b) => (b, ".zip")
     };
-    let mut file = File::create(competition.split_ascii_whitespace().collect::<String>() + "_scorecards" + name)?;
+    let file_name = format!("{prefix}{}_scorecards{name}", competition.split_ascii_whitespace().collect::<String>());
+    let mut file = File::create(file_name)?;
     file.write_all(&data)?;
     Ok(())
 }
