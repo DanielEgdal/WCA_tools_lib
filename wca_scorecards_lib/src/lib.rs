@@ -5,9 +5,22 @@ mod pdf;
 pub(crate) mod wcif;
 mod localhost;
 mod compiled;
-mod localhost_round_1;
 
 pub use pdf::Stages;
+
+static mut LOGGING: bool = false;
+
+pub fn set_logging(b: bool) {
+    unsafe {
+        LOGGING = b;
+    }
+}
+
+pub(crate) fn read_logging() -> bool {
+    unsafe {
+        LOGGING
+    }
+}
 
 #[allow(deprecated)]
 #[deprecated]
@@ -22,23 +35,21 @@ pub fn print_round_1_with_language<I>(args: &mut I, language: Language) where I:
     let b = args.next().unwrap();
     let b = std::fs::read_to_string(b).unwrap();
     let c = args.next().unwrap();
-    run(&a, &b, &c, language, Stages::new(1, u32::MAX));
+    run(&a, Some(b), &c, language, Stages::new(1, u32::MAX));
 }
 
 pub fn print_subsequent_rounds(competition_id: String, stages: Stages) {
     localhost::init(competition_id, stages);
 }
 
-pub fn print_round_1_english(groups_csv: &str, limit_csv: &str, competition: &str, stages: Stages) {
+pub fn print_round_1_english(groups_csv: &str, limit_csv: Option<String>, competition: &str, stages: Stages) {
     let groups_csv = std::fs::read_to_string(groups_csv).unwrap();
-    let limit_csv = std::fs::read_to_string(limit_csv).unwrap();
-    save_pdf(run(&groups_csv, &limit_csv, competition, Language::english(), stages), competition).unwrap();
+    let limit_csv = limit_csv.map(|x| std::fs::read_to_string(x).unwrap());
+    save_pdf(run(&groups_csv, limit_csv, competition, Language::english(), stages), competition).unwrap();
 }
 
-pub fn print_round_1_with_patch(groups_csv: &str, limit_csv: &str, id: &str) {
-    let groups_csv = std::fs::read_to_string(groups_csv).unwrap();
-    let limit_csv = std::fs::read_to_string(limit_csv).unwrap();
-    localhost_round_1::init(id.to_string(), groups_csv, limit_csv);
+pub fn blank_scorecard_page(competition: &str) {
+    save_pdf(scorecard_to_pdf::blank_scorecard_page(competition, &Language::english()), competition).unwrap();
 }
 
 #[cfg(test)]

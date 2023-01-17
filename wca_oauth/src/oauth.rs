@@ -30,12 +30,24 @@ impl OAuth {
             redirect_uri,
             client: reqwest::Client::new()
         };
-        oauth.get_auth_normal_flow(auth_code).await;
+        oauth.get_auth_explicit_flow(auth_code).await;
         oauth
     }
 
+    /// If you use this you need to get a token before hand. Refresh cannot be done with this type and will crash.
+    pub async fn get_auth_implicit(client_id: String, access_token: String, redirect_uri: String) -> Self {
+        Self {
+            access_token,
+            refresh_token: String::new(),
+            client_id,
+            client_secret: String::new(),
+            redirect_uri,
+            client: reqwest::Client::new()
+        }
+    }
 
-    async fn get_auth_normal_flow(&mut self, code: String) {
+
+    async fn get_auth_explicit_flow(&mut self, code: String) {
         let mut params = HashMap::new();
 
         params.insert("grant_type", "authorization_code");
@@ -63,8 +75,8 @@ impl OAuth {
         let mut params = HashMap::new();
 
         params.insert("grant_type", "refresh_token");
-        params.insert("client_id", "TDg_ARkGANTJB_z0oeUWBVl66a1AYdYAxc-jPJIhSfY");
-        params.insert("client_secret", "h0jIi8YkSzJo6U0JRQk-vli21yJ58kuz7_p9-AUyat0");
+        params.insert("client_id", &self.client_id);
+        params.insert("client_secret", &self.client_secret);
         params.insert("refresh_token", &self.refresh_token.trim());
 
         //Request token

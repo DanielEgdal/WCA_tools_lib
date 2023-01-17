@@ -27,7 +27,7 @@ pub fn save_pdf(data: Return, competition: &str) -> std::io::Result<()> {
     Ok(())
 }
 
-pub fn run(groups_csv: &str, limit_csv: &str, competition: &str, language: Language, stages: Stages) -> Return {
+pub fn run(groups_csv: &str, limit_csv: Option<String>, competition: &str, language: Language, stages: Stages) -> Return {
     let mut groups_csv = groups_csv.lines();
     //Header describing csv file formatting. First two are fixed and therfore skipped.
     //Unwrap cannot fail because the first element of lines always exists, although skip can lead
@@ -86,42 +86,48 @@ pub fn run(groups_csv: &str, limit_csv: &str, competition: &str, language: Langu
                 round: 1,
                 station,
                 event,
-                stage: station.map(|x| x as u32 / stages.no),
+                stage: station.map(|x| x as u32 / stages.capacity),
             }
         })
         .collect::<Vec<_>>();
     //Sort scorecards by event, round, group, station (Definition order) 
     k.sort();
 
+    let limits = match &limit_csv {
+        Some(limit_csv) => {
+            //Parse time limits
+            let mut limit = limit_csv.lines();
+            //Header cannot fail because first in lines
+            let event_list = limit.next().unwrap().split(",");
+            let limit_data = match limit.next() {
+                None => panic!("No time limits given in time limit csv"),
+                Some(v) => v
+            }.split(",");
 
-    //Parse time limits
-    let mut limit = limit_csv.lines();
-    //Header cannot fail because first in lines
-    let event_list = limit.next().unwrap().split(",");
-    let limit_data = match limit.next() {
-        None => panic!("No time limits given in time limit csv"),
-        Some(v) => v
-    }.split(",");
-
-    let mut limits = HashMap::new();
-    limit_data.zip(event_list).for_each(|(x, event)|{
-        let mut iter = x.split(";");
-        let v = match iter.next() {
-            None => {
-                limits.insert(event, TimeLimit::None);
-                return;
-            }
-            Some(v) => v,
-        };
-        match v {
-            "T" => limits.insert(event, TimeLimit::Single(usize_from_iter(&mut iter))),
-            "C" => limits.insert(event, TimeLimit::Cumulative(usize_from_iter(&mut iter))),
-            "K" => limits.insert(event, TimeLimit::Cutoff(usize_from_iter(&mut iter), usize_from_iter(&mut iter))),
-            "S" => limits.insert(event, TimeLimit::SharedCumulative(usize_from_iter(&mut iter), iter.map(|x|x.to_string()).collect::<Vec<_>>())),
-            "M" => limits.insert(event, TimeLimit::Multi),
-            _ => panic!("Malformatted time limit for event: {}", event)
-        };
-    });
+            let mut limits = HashMap::new();
+            limit_data.zip(event_list).for_each(|(x, event)|{
+                let mut iter = x.split(";");
+                let v = match iter.next() {
+                    None => {
+                        limits.insert(event, TimeLimit::None);
+                        return;
+                    }
+                    Some(v) => v,
+                };
+                match v {
+                    "T" => limits.insert(event, TimeLimit::Single(usize_from_iter(&mut iter))),
+                    "C" => limits.insert(event, TimeLimit::Cumulative(usize_from_iter(&mut iter))),
+                    "K" => limits.insert(event, TimeLimit::Cutoff(usize_from_iter(&mut iter), usize_from_iter(&mut iter))),
+                    "S" => limits.insert(event, TimeLimit::SharedCumulative(usize_from_iter(&mut iter), iter.map(|x|x.to_string()).collect::<Vec<_>>())),
+                    "M" => limits.insert(event, TimeLimit::Multi),
+                    _ => panic!("Malformatted time limit for event: {}", event)
+                };
+            });
+            limits
+        },
+        None => HashMap::new(),
+    };
+    
 
     //Generate pdf
     scorecards_to_pdf(k, competition, &map, &limits, language)
@@ -144,9 +150,9 @@ pub fn run_from_wcif(wcif: &mut WcifContainer, event: &str, round: usize, groups
                         event,
                         round,
                         group: n,
-                        station: Some(station),
+                        station: Some(station + 1),
                         id,
-                        stage: Some(station as u32 / stages.no),
+                        stage: Some(station as u32 / stages.capacity),
                     }
                 })
         }).flatten()

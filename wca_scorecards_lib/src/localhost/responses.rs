@@ -2,6 +2,8 @@ use super::*;
 
 use super::DB;
 
+use crate::read_logging;
+
 use scorecard_to_pdf::Return;
 use wca_oauth::{Assignment, AssignmentCode};
 
@@ -17,13 +19,31 @@ pub fn is_localhost(socket: Option<SocketAddr>) -> Result<(), Rejection> {
 }
 
 pub async fn root(db: DB, id: String, query: HashMap<String, String>, socket: Option<SocketAddr>) -> Result<Response<String>, Rejection> {
+    if read_logging() {
+        println!("Received request on root from {socket:?} for competition {id:?} with query: \n{query:#?}");
+    }
+
     is_localhost(socket)?;
-    let auth_code = &query["code"];
-    let oauth = wca_oauth::OAuth::get_auth(
-        "TDg_ARkGANTJB_z0oeUWBVl66a1AYdYAxc-jPJIhSfY".to_owned(), 
-        "h0jIi8YkSzJo6U0JRQk-vli21yJ58kuz7_p9-AUyat0".to_owned(), 
-        "http://localhost:5000/".to_owned(), 
-        auth_code.to_owned()).await;
+    if !query.contains_key("access_token") {
+        return Response::builder()
+            .header("content-type", "text/html")
+            // Why did anyone think it was a good idea to use a data fragment instead of a query when it is a query.
+            // This has caused so much pain and i hate this "solution"
+            // The world is covered in idiots who do not think one bit when designing their software (including me)
+            // I could keep on ranting forever but whatever i will stop now.
+            // Anyway this works by replacing the location, i.e. the stuff after the path in the url
+            // with the location hash i.e. the data fragment but first replacing the leading hash with a question mark.
+            // This means that we actually get this request twice, but only javascript has access to this data so this we must.
+            // And to make matters worse javascript is so slow at initializing, so this just makes it painfully slow.
+            // I am considering going back to exposing my secret just so i do not have to do this. I hate this so much.
+            .body("<script>window.location.replace(window.location.hash.replace(\"#\",\"?\"))</script>".to_string())
+            .map_err(|_| warp::reject())
+    }
+    let auth_token = &query["access_token"];
+    let oauth = wca_oauth::OAuth::get_auth_implicit(
+        "nqbnCQGGO605D_XYpgghZdIN2jDT67LhhUC1kE-Msuk".into(), 
+        auth_token.into(), 
+        "http://localhost:5000/".into()).await;
     let json = oauth.get_wcif(&id).await;
     let body = match json {
         Ok(mut json) => {
@@ -42,7 +62,7 @@ pub async fn root(db: DB, id: String, query: HashMap<String, String>, socket: Op
         .map_err(|_| warp::reject())
 }
 
-pub async fn round(db: DB, query: HashMap<String, String>, socket: Option<SocketAddr>, capacity: u32) -> Result<Response<String>, Rejection> {
+pub async fn round(db: DB, query: HashMap<String, String>, socket: Option<SocketAddr>, group_size: u32) -> Result<Response<String>, Rejection> {
     is_localhost(socket)?;
     let eventid = &query["eventid"];
     let round = usize::from_str_radix(&query["round"], 10).unwrap();
@@ -59,7 +79,7 @@ pub async fn round(db: DB, query: HashMap<String, String>, socket: Option<Socket
         .join("\\n");
     Response::builder()
         .header("content-type", "text/html; charset=utf-8")
-        .body(crate::compiled::js_replace(&str, competitors.len(), eventid, round, capacity))
+        .body(crate::compiled::js_replace(&str, competitors.len(), eventid, round, group_size))
         .map_err(|_| warp::reject())
 }
 

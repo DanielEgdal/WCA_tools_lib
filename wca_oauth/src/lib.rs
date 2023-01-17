@@ -33,16 +33,16 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::parse;
+    use crate::{parse, Wcif};
 
-    /*#[test]
+    #[test]
     fn de() {
         let wcif1 = serde_json::from_str::<Wcif>(include_str!("../wcif.json")).unwrap();
         let json = serde_json::to_string(&wcif1).unwrap();
         println!("{:#?}", json);
         let wcif2 = serde_json::from_str::<Wcif>(&json).unwrap();
         assert_eq!(wcif1, wcif2);
-    }*/
+    }
 
     #[test]
     fn overlapping() {

@@ -1,26 +1,29 @@
 use std::collections::HashMap;
 use crate::language::Language;
+use crate::scorecard::MaybeScorecard;
 use crate::scorecard_generator::ScorecardGenerator;
-use crate::{Scorecard, TimeLimit};
+use crate::TimeLimit;
 use crate::scorecard_generator::{Alignment::*, Weight::*};
 
-pub fn draw_scorecard(generator: &mut ScorecardGenerator, Scorecard { id, round, group, station, event, stage: _ }: &Scorecard, map: &HashMap<usize, String>, limits: &HashMap<&str, TimeLimit>, language: &Language) {
+pub fn draw_scorecard(generator: &mut ScorecardGenerator, scorecard: &MaybeScorecard, map: &HashMap<usize, String>, limits: &HashMap<&str, TimeLimit>, language: &Language) {
     let get_event = get_event_func(language);
     //Competiton
     let name = generator.get_competition_name().to_string();
     generator.write(&name, 52.5, 7.0, 10.0, Center, Normal);
-    let (round_text, event_text, group_text) = (format!("{}: {} | ", language.round, round), format!("{}", get_event(event)), format!(" | {}: {}", language.group, group));
+    let round_text = format!("{}: {} | ", language.round, scorecard.round());
+    let event_text = format!("{}", get_event(scorecard.event()));
+    let group_text = format!(" | {}: {}", language.group, scorecard.group());
     generator.write_multi_text(52.5, 11.5, 10.0, Center, &[
         (&round_text, Normal),
         (&event_text, Bold),
         (&group_text, Normal),
     ]);
     generator.draw_square(5.0, 15.0, 10.0, 5.5);
-    generator.write(&id.to_string(), 10.0, 19.0, 10.0, Center, Normal);
+    generator.write(&scorecard.id(), 10.0, 19.0, 10.0, Center, Normal);
     generator.draw_square(15.0, 15.0, 85.0, 5.5);
-    generator.write(&map[id], 16.0, 19.0, 10.0, Left, Normal);
+    generator.write(scorecard.name(map), 16.0, 19.0, 10.0, Left, Normal);
 
-    let attempts_amount = match *event {
+    let attempts_amount = match scorecard.event() {
         "666" | "777" | "333mbf" | "333bf" | "444bf" | "555bf" => 3,
         _ => 5
     };
@@ -53,7 +56,7 @@ pub fn draw_scorecard(generator: &mut ScorecardGenerator, Scorecard { id, round,
         generator.draw_square(100.0 - sign_box_width, attempts_start_height + j * distance, sign_box_width, height);
     }
 
-    let limit = match &limits[event.clone()] {
+    let limit = match scorecard.limit(limits) {
         TimeLimit::Single(z) => format!("{}: {}", language.time_limit, time_string(*z)),
         TimeLimit::Cumulative(z) => format!("{}: {}", language.cumulative_limit, time_string(*z)),
         TimeLimit::Cutoff(x, z) => format!("{}: {}, {}: {}", language.curoff, time_string(*x), language.time_limit, time_string(*z)),
@@ -65,7 +68,7 @@ pub fn draw_scorecard(generator: &mut ScorecardGenerator, Scorecard { id, round,
     if generator.get_width_of_string(&limit, 7.0, Normal) <= 95.0 {
         generator.write(&limit, 100.0, 94.0, 7.0, Right, Normal);
     }
-    let station_text = match station {
+    let station_text = match scorecard.station() {
         Some(v) => v.to_string(),
         None => "".to_string()
     };
@@ -85,6 +88,7 @@ fn time_string(mut z: usize) -> String {
 
 fn get_event_func<'a>(language: &'a Language) -> impl Fn(&str) -> &'a str {
     |x| match x {
+        "" => "___________________________",
         "333" => &language.e333,
         "444" => &language.e444,
         "555" => &language.e555,
