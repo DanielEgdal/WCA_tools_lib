@@ -2,9 +2,14 @@
     <head>
         <script type="module">
             import init, {initialize} from "./pkg/group_menu.js";
-            document.getElementById("submit").query = "?yes=set";
+            document.getElementById("submit").query = "?EVENT";
+            let checkbox = document.getElementById("accept");
+            let submit = document.getElementById("submit");
+            checkbox.addEventListener("change", () => {
+                submit.href = submit.prething + checkbox.checked;
+            })
             init().then(() => {
-                initialize("23\rghy\n34\rhty\n7\rtest\n13\rm\n12\rst", 5);
+                initialize("DATA", NUMBER, CAPACITY);
             });
         </script>
     </head>

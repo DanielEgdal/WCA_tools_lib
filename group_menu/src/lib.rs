@@ -22,13 +22,8 @@ type Groups = Vec<Vec<(usize, String, usize)>>;
 static mut GROUPS: Groups = vec![];
 
 #[wasm_bindgen]
-pub fn initialize(data: &str, number: usize) {
-    let tables = prompt("How many solving stations will you be using?");
-    let max_group_size = match usize::from_str_radix(&tables, 10) {
-        Err(_) => try_again(),
-        Ok(v) => v
-    };
-    let groups = (number + max_group_size - 1) / max_group_size;
+pub fn initialize(data: &str, number: usize, capacity: usize) {
+    let groups = (number + capacity - 1) / capacity;
     let competitors = data
         .split("\n")
         .enumerate()
@@ -38,7 +33,7 @@ pub fn initialize(data: &str, number: usize) {
             let name = iter.next().unwrap();
             (number - index, name, id)
         });
-    let groups_data: Groups = GroupIter::new(competitors, number, max_group_size)
+    let groups_data: Groups = GroupIter::new(competitors, number, capacity)
         .enumerate()    
         .map(|(group, vec)|{
             add_group(group + 1);

@@ -12,7 +12,7 @@ pub struct Scorecard<'a> {
     pub group: usize,
     pub station: Option<usize>,
     pub id: usize,
-    pub stage: Option<&'a str>
+    pub stage: Option<u32>
 }
 
 pub enum TimeLimit {

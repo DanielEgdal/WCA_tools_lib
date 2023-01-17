@@ -22,14 +22,14 @@ pub fn print_round_1_with_language<I>(args: &mut I, language: Language) where I:
     let b = args.next().unwrap();
     let b = std::fs::read_to_string(b).unwrap();
     let c = args.next().unwrap();
-    run(&a, &b, &c, language, None);
+    run(&a, &b, &c, language, Stages::new(1, u32::MAX));
 }
 
-pub fn print_subsequent_rounds(competition_id: String, stages: Option<Stages>) {
+pub fn print_subsequent_rounds(competition_id: String, stages: Stages) {
     localhost::init(competition_id, stages);
 }
 
-pub fn print_round_1_english(groups_csv: &str, limit_csv: &str, competition: &str, stages: Option<Stages>) {
+pub fn print_round_1_english(groups_csv: &str, limit_csv: &str, competition: &str, stages: Stages) {
     let groups_csv = std::fs::read_to_string(groups_csv).unwrap();
     let limit_csv = std::fs::read_to_string(limit_csv).unwrap();
     save_pdf(run(&groups_csv, &limit_csv, competition, Language::english(), stages), competition).unwrap();
@@ -47,12 +47,9 @@ mod test {
 
     #[test]
     fn everything() {
-        let mut stages = Stages::new();
-        stages.add_stage(Some("R".to_string()), 10);
-        stages.add_stage(Some("G".to_string()), 10);
-        stages.add_stage(Some("B".to_string()), 10);
+        let stages = Stages::new(3, 10);
 
         //crate::print_round_1_english("files/OstervangOpen2022stationNumbers.csv", "files/OstervangOpen2022timeLimits.csv", "Østervang Open 2022", Some(stages));
-        crate::print_subsequent_rounds("danishchampionship2022".to_string(), Some(stages));
+        crate::print_subsequent_rounds("danishchampionship2022".to_string(), stages);
     }
 }

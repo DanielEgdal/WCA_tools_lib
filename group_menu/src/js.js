@@ -73,7 +73,8 @@ export function update_id(id, newId) {
 
 export function href(id, str) {
     let a = document.getElementById(id);
-    a.href = "/pdf" + a.query + "&groups=" + str+ "&wcif=" + is_checked();
+    a.prething = "pdf" + a.query + "&groups=" + str + "&wcif=";
+    a.href = a.prething + is_checked();
 }
 
 export function is_checked() {

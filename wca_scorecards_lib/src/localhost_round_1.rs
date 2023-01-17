@@ -1,5 +1,5 @@
 use std::{collections::HashMap, net::SocketAddr};
-use crate::pdf::run;
+use crate::{pdf::run, Stages};
 use scorecard_to_pdf::Language;
 use warp::{Filter, hyper::Response, Rejection};
 use scorecard_to_pdf::Return;
@@ -45,7 +45,7 @@ async fn root(groups_csv: String, limit_csv: String, id: String, query: HashMap<
         Ok(json) => {
             let wcif = json.add_oauth(oauth);
             let name = wcif.get().name.clone();
-            let pdf = run(&groups_csv, &limit_csv, &name, Language::english(), None);
+            let pdf = run(&groups_csv, &limit_csv, &name, Language::english(), Stages::new(1, u32::MAX));
             wcif.patch().await;
             match pdf {
                 Return::Pdf(b) => b,

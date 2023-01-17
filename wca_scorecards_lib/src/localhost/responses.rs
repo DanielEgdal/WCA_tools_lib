@@ -42,7 +42,7 @@ pub async fn root(db: DB, id: String, query: HashMap<String, String>, socket: Op
         .map_err(|_| warp::reject())
 }
 
-pub async fn round(db: DB, query: HashMap<String, String>, socket: Option<SocketAddr>) -> Result<Response<String>, Rejection> {
+pub async fn round(db: DB, query: HashMap<String, String>, socket: Option<SocketAddr>, capacity: u32) -> Result<Response<String>, Rejection> {
     is_localhost(socket)?;
     let eventid = &query["eventid"];
     let round = usize::from_str_radix(&query["round"], 10).unwrap();
@@ -59,51 +59,24 @@ pub async fn round(db: DB, query: HashMap<String, String>, socket: Option<Socket
         .join("\\n");
     Response::builder()
         .header("content-type", "text/html; charset=utf-8")
-        .body(crate::compiled::js_replace(&str, competitors.len(), eventid, round))
+        .body(crate::compiled::js_replace(&str, competitors.len(), eventid, round, capacity))
         .map_err(|_| warp::reject())
 }
 
-pub async fn pdf(db: DB, query: HashMap<String, String>, socket: Option<SocketAddr>, stages: Option<Stages>) -> Result<Response<Vec<u8>>, Rejection> {
-    fn assign_stages(groups: Vec<Vec<usize>>, stages: &Option<Stages>) -> Vec<Vec<(usize, usize)>> {
+pub async fn pdf(db: DB, query: HashMap<String, String>, socket: Option<SocketAddr>, stages: Stages) -> Result<Response<Vec<u8>>, Rejection> {
+    fn assign_stages(groups: Vec<Vec<usize>>, stages: &Stages) -> Vec<Vec<(usize, usize)>> {
         groups.into_iter()
-            .map(|group| match stages {
-                None => group.into_iter()
-                    .zip(1..)
-                    .collect::<Vec<_>>(),
-                Some(stages) => {
-                    let mut size_left = group.len();
-                    let mut no_of_stages = 0;
-                    let mut stage_capacity = 0;
-                    for stage in stages.data.iter() {
-                        no_of_stages += 1;
-                        stage_capacity += stage.1;
-                        if size_left > stage.1 {
-                            size_left -= stage.1;
-                        }
-                        else {
-                            break;
-                        }
-                    }
-                    let over_capacity = stage_capacity - group.len();
-                    let over_per_stage = over_capacity / no_of_stages;
-                    let leftover = over_capacity - over_per_stage * no_of_stages;
-                    let mut current_offset = 0;
-                    let mut remaining_on_stage = stages.data[0].1 - over_per_stage;
-                    let mut current_stage = 0;
-                    group.into_iter()
-                        .zip(1..)
-                        .map(|(id, station)| {
-                            if remaining_on_stage == 0 {
-                                current_offset += over_per_stage + if  current_stage >= no_of_stages - leftover { 1 } else { 0 };
-                                current_stage += 1;
-                                remaining_on_stage = stages.data[current_stage].1 - over_per_stage - if current_stage >= no_of_stages - leftover { 1 } else { 0 };
-                            }
-                            remaining_on_stage -= 1;
-                            (id, station + current_offset)
-                        })
-                        .collect::<Vec<_>>()
-                }
-            })
+            .map(|group| {
+                    let no_of_stages = (group.len() + stages.capacity as usize - 1) / stages.capacity as usize;
+                    let lower_per_stage = group.len() / no_of_stages;
+                    let leftover = group.len() - lower_per_stage * no_of_stages;
+                    let splits = (0..no_of_stages).map(|i| lower_per_stage * i + i.min(leftover));
+                    group.into_iter().enumerate().map(|(idx, id)| {
+                        let (stage, lower) = splits.clone().enumerate().rev().find(|(_, lower)| *lower <= idx).expect("First is 0");
+                        let station = stages.capacity as usize * stage + idx - lower;
+                        (id, station)
+                    }).collect()  
+                })
             .collect()
     }
     

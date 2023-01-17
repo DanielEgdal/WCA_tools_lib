@@ -7,16 +7,13 @@ use scorecard_to_pdf::Return;
 
 #[derive(Clone)]
 pub struct Stages {
-    pub(crate) data: Vec<(Option<String>, usize)>
+    pub(crate) no: u32,
+    pub(crate) capacity: u32,
 }
 
 impl Stages {
-    pub fn new() -> Stages {
-        Stages { data: vec![] }
-    }
-
-    pub fn add_stage(&mut self, ident: Option<String>, size: usize) {
-        self.data.push((ident, size));
+    pub fn new(no: u32, capacity: u32) -> Stages {
+        Stages { no, capacity }
     }
 }
 
@@ -30,25 +27,7 @@ pub fn save_pdf(data: Return, competition: &str) -> std::io::Result<()> {
     Ok(())
 }
 
-pub fn stage_ident(station: Option<usize>, stages: &Option<Stages>) -> Option<&str> {
-    let mut station = station?;
-    let org = station;
-    let stages = stages.as_ref()?;
-    for (ident, size) in stages.data.iter() {
-        if station <= *size {
-            return match ident {
-                Some(v) => Some(&v),
-                None => None
-            }
-        }
-        else {
-            station -= size;
-        }
-    }
-    panic!("Invalid station number given: {}", org)
-}
-
-pub fn run(groups_csv: &str, limit_csv: &str, competition: &str, language: Language, stages: Option<Stages>) -> Return {
+pub fn run(groups_csv: &str, limit_csv: &str, competition: &str, language: Language, stages: Stages) -> Return {
     let mut groups_csv = groups_csv.lines();
     //Header describing csv file formatting. First two are fixed and therfore skipped.
     //Unwrap cannot fail because the first element of lines always exists, although skip can lead
@@ -107,7 +86,7 @@ pub fn run(groups_csv: &str, limit_csv: &str, competition: &str, language: Langu
                 round: 1,
                 station,
                 event,
-                stage: stage_ident(station, &stages)
+                stage: station.map(|x| x as u32 / stages.no),
             }
         })
         .collect::<Vec<_>>();
@@ -148,7 +127,7 @@ pub fn run(groups_csv: &str, limit_csv: &str, competition: &str, language: Langu
     scorecards_to_pdf(k, competition, &map, &limits, language)
 }
 
-pub fn run_from_wcif(wcif: &mut WcifContainer, event: &str, round: usize, groups: Vec<Vec<(usize, usize)>>, stages: &Option<Stages>) -> Return {
+pub fn run_from_wcif(wcif: &mut WcifContainer, event: &str, round: usize, groups: Vec<Vec<(usize, usize)>>, stages: &Stages) -> Return {
     let (map, limit, competition) = crate::wcif::get_scorecard_info_for_round(wcif, event, round);
 
     //Unwrap should not fail as the existence of this round is already confirmed at this point.
@@ -167,7 +146,7 @@ pub fn run_from_wcif(wcif: &mut WcifContainer, event: &str, round: usize, groups
                         group: n,
                         station: Some(station),
                         id,
-                        stage: stage_ident(Some(station), stages)
+                        stage: Some(station as u32 / stages.no),
                     }
                 })
         }).flatten()

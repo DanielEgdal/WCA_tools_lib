@@ -4,12 +4,12 @@
             import init, {initialize} from "./pkg/group_menu.js";
             document.getElementById("submit").query = "?EVENT";
             let checkbox = document.getElementById("accept");
-            let submut = document.getElementById("submit");
+            let submit = document.getElementById("submit");
             checkbox.addEventListener("change", () => {
                 submit.href = submit.prething + checkbox.checked;
             })
             init().then(() => {
-                initialize("DATA", NUMBER);
+                initialize("DATA", NUMBER, CAPACITY);
             });
         </script>
     </head>

@@ -15,7 +15,7 @@ pub use responses::is_localhost;
 type DB = Arc<Mutex<Option<WcifOAuth>>>;
 
 #[tokio::main]
-pub async fn init(id: String, stages: Option<Stages>) {
+pub async fn init(id: String, stages: Stages) {
     //Url to approve the Oauth application
     let auth_url = "https://www.worldcubeassociation.org/oauth/authorize?client_id=TDg_ARkGANTJB_z0oeUWBVl66a1AYdYAxc-jPJIhSfY&redirect_uri=http%3A%2F%2Flocalhost%3A5000%2F&response_type=code&scope=public+manage_competitions";
 
@@ -35,12 +35,13 @@ pub async fn init(id: String, stages: Option<Stages>) {
 
     //Get request for specific round. Query to specify which event and round is to be used.
     let local_wcif = wcif.clone();
+    let capacity = stages.capacity;
     let round = warp::path!("round")
         .and(warp::query::query())
         .and(warp::addr::remote())
         .and_then(move |query: HashMap<String,String>, socket: Option<SocketAddr>|{
             let wcif = local_wcif.clone();
-            round(wcif, query, socket)
+            round(wcif, query, socket, capacity)
         });
 
     //Get request for pdf. Query to specify which event, round and groups to be used.
