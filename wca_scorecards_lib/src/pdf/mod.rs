@@ -151,7 +151,7 @@ pub fn run_from_wcif(wcif: &mut WcifContainer, event: &str, round: usize, groups
                         event,
                         round,
                         group: n,
-                        station: Some(station + 1),
+                        station: Some(station),
                         id,
                         stage: Some(station as u32 / stages.capacity),
                     }

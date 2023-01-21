@@ -93,7 +93,7 @@ pub async fn pdf(db: DB, query: HashMap<String, String>, socket: Option<SocketAd
                     let splits = (0..no_of_stages).map(|i| lower_per_stage * i + i.min(leftover));
                     group.into_iter().enumerate().map(|(idx, id)| {
                         let (stage, lower) = splits.clone().enumerate().rev().find(|(_, lower)| *lower <= idx).expect("First is 0");
-                        let station = stages.capacity as usize * stage + idx - lower;
+                        let station = stages.capacity as usize * stage + idx - lower + 1;
                         (id, station)
                     }).collect()  
                 })
