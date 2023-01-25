@@ -83,7 +83,7 @@ pub async fn round(db: DB, query: HashMap<String, String>, socket: Option<Socket
         .map_err(|_| warp::reject())
 }
 
-pub async fn pdf(db: DB, query: HashMap<String, String>, socket: Option<SocketAddr>, stages: Stages) -> Result<Response<Vec<u8>>, Rejection> {
+pub(crate) async fn pdf(db: DB, query: HashMap<String, String>, socket: Option<SocketAddr>, stages: Stages, compare: ScorecardOrdering) -> Result<Response<Vec<u8>>, Rejection> {
     fn assign_stages(groups: Vec<Vec<usize>>, stages: &Stages) -> Vec<Vec<(usize, usize)>> {
         groups.into_iter()
             .map(|group| {
@@ -139,7 +139,7 @@ pub async fn pdf(db: DB, query: HashMap<String, String>, socket: Option<SocketAd
         }
     }
 
-    let bytes = crate::pdf::run_from_wcif(wcif_oauth, eventid, round, groups_with_stations, &stages);
+    let bytes = crate::pdf::run_from_wcif(wcif_oauth, eventid, round, groups_with_stations, &stages, compare);
 
     match bytes {
         Return::Pdf(bytes) => {

@@ -1,5 +1,5 @@
 use pdf::{run, save_pdf};
-use scorecard_to_pdf::Language;
+use scorecard_to_pdf::{Language, Scorecard};
 
 mod pdf;
 pub(crate) mod wcif;
@@ -35,32 +35,45 @@ pub fn print_round_1_with_language<I>(args: &mut I, language: Language) where I:
     let b = args.next().unwrap();
     let b = std::fs::read_to_string(b).unwrap();
     let c = args.next().unwrap();
-    run(&a, Some(b), &c, language, Stages::new(1, u32::MAX));
+    run(&a, Some(b), &c, language, Stages::new(1, u32::MAX), ScorecardOrdering::Default);
 }
 
-pub fn print_subsequent_rounds(competition_id: String, stages: Stages) {
-    localhost::init(competition_id, stages);
+pub fn print_subsequent_rounds(competition_id: String, stages: Stages, sort_by_name: bool) {
+    localhost::init(competition_id, stages, ScorecardOrdering::from_bool(sort_by_name));
 }
 
-pub fn print_round_1_english(groups_csv: &str, limit_csv: Option<String>, competition: &str, stages: Stages) {
+pub fn print_round_1_english(groups_csv: &str, limit_csv: Option<String>, competition: &str, stages: Stages, sort_by_name: bool) {
     let groups_csv = std::fs::read_to_string(groups_csv).unwrap();
     let limit_csv = limit_csv.map(|x| std::fs::read_to_string(x).unwrap());
-    save_pdf(run(&groups_csv, limit_csv, competition, Language::english(), stages), competition, "").unwrap();
+    let compare = ScorecardOrdering::from_bool(sort_by_name);
+    let scorecards = run(&groups_csv, limit_csv, competition, Language::english(), stages, compare);
+    save_pdf(scorecards, competition, "").unwrap();
 }
 
 pub fn blank_scorecard_page(competition: &str) {
     save_pdf(scorecard_to_pdf::blank_scorecard_page(competition, &Language::english()), competition, "blank_").unwrap();
 }
 
-#[cfg(test)]
-mod test {
-    use crate::Stages;
+#[derive(Clone, Copy)]
+pub(crate) enum ScorecardOrdering {
+    Default,
+    ByName,
+}
 
-    #[test]
-    fn everything() {
-        let stages = Stages::new(3, 10);
+impl ScorecardOrdering {
+    fn from_bool(sort_by_name: bool) -> ScorecardOrdering {
+        if sort_by_name {
+            ScorecardOrdering::ByName
+        }
+        else {
+            ScorecardOrdering::Default
+        }
+    }
 
-        //crate::print_round_1_english("files/OstervangOpen2022stationNumbers.csv", "files/OstervangOpen2022timeLimits.csv", "Østervang Open 2022", Some(stages));
-        crate::print_subsequent_rounds("danishchampionship2022".to_string(), stages);
+    fn sort_slice(&self, slice: &mut [Scorecard<'_>]) {
+        match self {
+            ScorecardOrdering::Default => slice.sort(),
+            ScorecardOrdering::ByName => slice.sort_by(|a, b| a.id.cmp(&b.id).then(a.cmp(&b))),
+        }
     }
 }

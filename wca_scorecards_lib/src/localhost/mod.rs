@@ -1,5 +1,5 @@
 use std::{sync::Arc, collections::HashMap, net::SocketAddr};
-use crate::{wcif::*, Stages};
+use crate::{wcif::*, Stages, ScorecardOrdering};
 use tokio::sync::Mutex;
 use warp::{Filter, hyper::Response, Rejection};
 use wca_oauth::WcifOAuth;
@@ -15,7 +15,7 @@ pub use responses::is_localhost;
 type DB = Arc<Mutex<Option<WcifOAuth>>>;
 
 #[tokio::main]
-pub async fn init(id: String, stages: Stages) {
+pub(crate) async fn init(id: String, stages: Stages, compare: ScorecardOrdering) {
     //Url to approve the Oauth application
     let auth_url = "https://www.worldcubeassociation.org/oauth/authorize?client_id=nqbnCQGGO605D_XYpgghZdIN2jDT67LhhUC1kE-Msuk&redirect_uri=http%3A%2F%2Flocalhost%3A5000%2F&response_type=token&scope=public+manage_competitions";
 
@@ -52,7 +52,7 @@ pub async fn init(id: String, stages: Stages) {
         .and_then(move |query: HashMap<String, String>, socket: Option<SocketAddr>|{
             let wcif = local_wcif.clone();
             let stages = stages.clone();
-            pdf(wcif, query, socket, stages)
+            pdf(wcif, query, socket, stages, compare)
         });
 
     let wasm_js = warp::path!("round" / "pkg" / "group_menu.js")
