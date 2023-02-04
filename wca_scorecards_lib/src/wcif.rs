@@ -70,7 +70,9 @@ fn get_advancement_amount(round: &Round, advancement_condition: &Option<Advancem
             AdvancementCondition::Percent(level) => number_of_competitors * level / 100,
             AdvancementCondition::Ranking(level) => *level,
             AdvancementCondition::AttemptResult(level) => {
-                let x = round.results.iter().enumerate().find(|(_, result)|{
+                let mut intermediate = round.results.iter().collect::<Vec<_>>();
+                intermediate.sort_by_key(|r| r.ranking);
+                let x = intermediate.into_iter().enumerate().find(|(_, result)|{
                     match result.average {
                         AttemptResult::DNF | AttemptResult::DNS | AttemptResult::Skip => true,
                         AttemptResult::Ok(average) => average as usize > *level
@@ -95,7 +97,9 @@ fn get_advancement_ids(round: &Round, advancement_condition: &Option<Advancement
     match advancement_amount {
         None => return vec![],
         Some(advancement_amount) => {
-            let filtered = round.results.iter().filter(|result| result.ranking.unwrap() <= advancement_amount).collect::<Vec<_>>();
+            let mut intermediate = round.results.iter().collect::<Vec<_>>();
+            intermediate.sort_by_key(|r| r.ranking);
+            let filtered = intermediate.into_iter().filter(|result| result.ranking.unwrap() <= advancement_amount).collect::<Vec<_>>();
             if filtered.len() > advancement_amount {
                 let not_included = filtered.last().unwrap().ranking.unwrap();
                 return filtered.iter().filter(|result| result.ranking.unwrap() != not_included).map(|result| result.person_id).collect();
