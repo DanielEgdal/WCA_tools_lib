@@ -13,18 +13,18 @@ pub use db::DB;
 
 #[tokio::main]
 pub(crate) async fn init(stages: Stages, compare: ScorecardOrdering) {
-    //Url to approve the Oauth application
-    let auth_url = "https://www.worldcubeassociation.org/oauth/authorize?client_id=nqbnCQGGO605D_XYpgghZdIN2jDT67LhhUC1kE-Msuk&redirect_uri=http%3A%2F%2Flocalhost%3A5000%2F&response_type=token&scope=public+manage_competitions";
-
     //Mutex for storing the authentification code for async reasons.
     let wcif: DB = DB::new();
 
     let client_id = "nqbnCQGGO605D_XYpgghZdIN2jDT67LhhUC1kE-Msuk";
 
-    let redirect_uri = "localhost:5000";
+    let redirect_uri = "http://localhost:5000/validated";
     
+    let validate = warp::path::end()
+        .and_then(validate);
+
     //Handling the get request from authentification. HTTP no s, super secure, everything is awesome. The API said that https is not required for localhost so it is fine.
-    let root = warp::path::end()
+    let root = warp::path!("validated")
         .and(warp::query::query())
         .and_then(move |query: HashMap<String, String>| {
             root(query, redirect_uri.to_string(), client_id.to_string())
@@ -76,7 +76,8 @@ pub(crate) async fn init(stages: Stages, compare: ScorecardOrdering) {
         .header("content-type", "text/wasm")
         .body(crate::compiled::WASM));
 
-    let routes = root
+    let routes = validate
+        .or(root)
         .or(competition)
         .or(round)
         .or(pdf)
@@ -84,20 +85,11 @@ pub(crate) async fn init(stages: Stages, compare: ScorecardOrdering) {
         .or(js)
         .or(wasm);
 
-    //Try opening in browser. In case of fail write the url to the terminal
-    match open::that(auth_url) {
-        Err(_) => {
-            println!("Please open the following website and follow the instructions:");
-            println!("{}", auth_url);
-        }
-        Ok(_) => ()
-    }
-
     let serve = warp::serve(routes).run(([127, 0, 0, 1], 5000));
 
     let mut interval = async_timer::Interval::platform_new(core::time::Duration::from_secs(600));
 
-    let future = async {
+    let garbage_eliminator = async {
         let mut wcif = wcif.clone();
         loop {
             wcif.garbage_elimination().await;
@@ -105,6 +97,6 @@ pub(crate) async fn init(stages: Stages, compare: ScorecardOrdering) {
         }
     };
 
-    std::future::join!(serve, future).await;
+    std::future::join!(serve, garbage_eliminator).await;
 }
 

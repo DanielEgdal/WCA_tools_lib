@@ -5,6 +5,15 @@ use super::DB;
 use scorecard_to_pdf::Return;
 use wca_oauth::{Assignment, AssignmentCode};
 
+const URL: &str = "https://www.worldcubeassociation.org/oauth/authorize?client_id=nqbnCQGGO605D_XYpgghZdIN2jDT67LhhUC1kE-Msuk&redirect_uri=http%3A%2F%2Flocalhost%3A5000%2Fvalidated&response_type=token&scope=public+manage_competitions";
+
+pub async fn validate() -> Result<Response<String>, Rejection> {
+    Response::builder()
+        .header("content-type", "text/html")
+        .body(format!("<script>window.location.href=\"{}\"</script>", URL))
+        .map_err(|_| warp::reject())
+}
+
 pub async fn root(query: HashMap<String, String>, redirect_uri: String, client_id: String) -> Result<Response<String>, Rejection> {
     if !query.contains_key("access_token") {
         return Response::builder()

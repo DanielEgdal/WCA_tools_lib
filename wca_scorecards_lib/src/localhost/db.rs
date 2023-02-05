@@ -24,6 +24,8 @@ impl DB {
     }
 
     pub async fn insert_wcif(&mut self, competition: String, auth_code: String, wcif: WcifContainer) {
+        let str = format!("wcif stored for: {} {}", auth_code, competition);
+        dbg!(str);
         self.inner.lock()
             .await
             .insert((competition, auth_code), (wcif, std::time::Instant::now()));
@@ -43,6 +45,8 @@ impl DB {
 
 impl DBLock<'_> {
     pub fn get(&mut self) -> Option<&mut WcifContainer> {
+        let str = format!("wcif retrieved for: {} {}", self.key.0, self.key.1);
+        dbg!(str);
         self.inner.get_mut(&self.key).map(|s| &mut s.0)
     }
 }
