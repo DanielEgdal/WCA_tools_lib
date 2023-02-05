@@ -1,3 +1,5 @@
+#![feature(future_join)]
+
 use pdf::{run, save_pdf};
 use scorecard_to_pdf::{Language, Scorecard};
 

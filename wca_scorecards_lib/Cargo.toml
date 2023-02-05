@@ -13,3 +13,4 @@ open = "3.0"
 warp = "0.3"
 wca_oauth = { path = "../wca_oauth" }
 scorecard_to_pdf = { path = "../scorecard_to_pdf" }
+async-timer = "0.7"

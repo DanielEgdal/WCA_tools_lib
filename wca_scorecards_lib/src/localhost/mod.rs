@@ -1,18 +1,16 @@
 use std::{sync::Arc, collections::HashMap, net::SocketAddr};
 use crate::{wcif::*, Stages, ScorecardOrdering};
-use tokio::sync::Mutex;
 use warp::{Filter, hyper::Response, Rejection};
-use wca_oauth::WcifOAuth;
 
 mod html;
 mod responses;
+mod db;
 
 use html::event_list_to_html;
 use responses::*;
 
 pub use responses::is_localhost;
-
-type DB = Arc<Mutex<Option<WcifOAuth>>>;
+pub use db::DB;
 
 #[tokio::main]
 pub(crate) async fn init(id: String, stages: Stages, compare: ScorecardOrdering) {
@@ -20,7 +18,11 @@ pub(crate) async fn init(id: String, stages: Stages, compare: ScorecardOrdering)
     let auth_url = "https://www.worldcubeassociation.org/oauth/authorize?client_id=nqbnCQGGO605D_XYpgghZdIN2jDT67LhhUC1kE-Msuk&redirect_uri=http%3A%2F%2Flocalhost%3A5000%2F&response_type=token&scope=public+manage_competitions";
 
     //Mutex for storing the authentification code for async reasons.
-    let wcif: DB = Arc::new(Mutex::new(None));
+    let wcif: DB = DB::new();
+
+    let client_id = "nqbnCQGGO605D_XYpgghZdIN2jDT67LhhUC1kE-Msuk";
+
+    let redirect_uri = "localhost:5000";
     
     //Handling the get request from authentification. HTTP no s, super secure, everything is awesome. The API said that https is not required for localhost so it is fine.
     let local_wcif = wcif.clone();
@@ -30,7 +32,16 @@ pub(crate) async fn init(id: String, stages: Stages, compare: ScorecardOrdering)
         .and_then(move |query: HashMap<String, String>, socket: Option<SocketAddr>| {
             let id = id.clone();
             let wcif = local_wcif.clone();
-            root(wcif, id, query, socket)
+            root(wcif, id, query, redirect_uri.to_string(), client_id.to_string(), socket)
+        });
+
+    //Competition request
+    let local_wcif = wcif.clone();
+    let competition = warp::path!("competition")
+        .and(warp::query::query())
+        .and_then(move |query: HashMap<String, String>| {
+            let db = local_wcif.clone();
+            competition(db, query, client_id.to_string(), redirect_uri.to_string())
         });
 
     //Get request for specific round. Query to specify which event and round is to be used.
@@ -52,7 +63,9 @@ pub(crate) async fn init(id: String, stages: Stages, compare: ScorecardOrdering)
         .and_then(move |query: HashMap<String, String>, socket: Option<SocketAddr>|{
             let wcif = local_wcif.clone();
             let stages = stages.clone();
-            pdf(wcif, query, socket, stages, compare)
+            let client_id = client_id.to_string();
+            let redirect_uri = redirect_uri.to_string();
+            pdf(wcif, query, socket, stages, compare, client_id, redirect_uri)
         });
 
     let wasm_js = warp::path!("round" / "pkg" / "group_menu.js")
@@ -66,11 +79,12 @@ pub(crate) async fn init(id: String, stages: Stages, compare: ScorecardOrdering)
         .body(crate::compiled::JS));
     
     let wasm = warp::path!("round" / "pkg" / "group_menu_bg.wasm")
-    .map(|| Response::builder()
+        .map(|| Response::builder()
         .header("content-type", "text/wasm")
         .body(crate::compiled::WASM));
 
     let routes = root
+        .or(competition)
         .or(round)
         .or(pdf)
         .or(wasm_js)
@@ -86,5 +100,18 @@ pub(crate) async fn init(id: String, stages: Stages, compare: ScorecardOrdering)
         Ok(_) => ()
     }
 
-    warp::serve(routes).run(([127, 0, 0, 1], 5000)).await;
+    let serve = warp::serve(routes).run(([127, 0, 0, 1], 5000));
+
+    let mut interval = async_timer::Interval::platform_new(core::time::Duration::from_secs(1));
+
+    let future = async {
+        let mut wcif = wcif.clone();
+        loop {
+            wcif.garbage_elimination().await;
+            interval.as_mut().await;
+        }
+    };
+
+    std::future::join!(serve, future).await;
 }
+

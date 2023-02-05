@@ -2,27 +2,22 @@ use super::*;
 
 use super::DB;
 
-use crate::read_logging;
-
 use scorecard_to_pdf::Return;
 use wca_oauth::{Assignment, AssignmentCode};
 
 pub fn is_localhost(socket: Option<SocketAddr>) -> Result<(), Rejection> {
-    if let Some(socket) = socket {
+    Ok(())
+    /*if let Some(socket) = socket {
         let ip = socket.ip();
         match ip {
             std::net::IpAddr::V4(ip) if ip == std::net::Ipv4Addr::LOCALHOST => return Ok(()),
             _ => ()
         }
     }
-    Err(warp::reject())
+    Err(warp::reject())*/
 }
 
-pub async fn root(db: DB, id: String, query: HashMap<String, String>, socket: Option<SocketAddr>) -> Result<Response<String>, Rejection> {
-    if read_logging() {
-        println!("Received request on root from {socket:?} for competition {id:?} with query: \n{query:#?}");
-    }
-
+pub async fn root(db: DB, id: String, query: HashMap<String, String>, redirect_uri: String, client_id: String, socket: Option<SocketAddr>) -> Result<Response<String>, Rejection> {
     is_localhost(socket)?;
     if !query.contains_key("access_token") {
         return Response::builder()
@@ -41,16 +36,25 @@ pub async fn root(db: DB, id: String, query: HashMap<String, String>, socket: Op
     }
     let auth_token = &query["access_token"];
     let oauth = wca_oauth::OAuth::get_auth_implicit(
-        "nqbnCQGGO605D_XYpgghZdIN2jDT67LhhUC1kE-Msuk".into(), 
+        client_id.into(), 
         auth_token.into(), 
-        "http://localhost:5000/".into()).await;
-    let json = oauth.get_wcif(&id).await;
+        redirect_uri).await;
+
+    Response::builder()
+        .header("content-type", "text/html")
+        .body(format!("<a href=\"competition?auth_code={}&competition=dsfgeneralforsamlingen2023\">link</a>", auth_token))
+        .map_err(|_| warp::reject())
+}
+
+pub async fn competition(mut db: DB, query: HashMap<String, String>, client_id: String, redirect_uri: String) -> Result<Response<String>, Rejection> {
+    let auth_code = &query["auth_code"];
+    let competition = &query["competition"];
+    let oauth = wca_oauth::OAuth::get_auth_implicit(client_id, auth_code.to_string(), redirect_uri).await;
+    let json = oauth.get_wcif(&competition).await;
     let body = match json {
         Ok(mut json) => {
-            let body = event_list_to_html(get_rounds(&mut json)).to_string();
-            let mut db_guard = db.lock().await;
-            *db_guard = Some(json.add_oauth(oauth));
-            drop(db_guard);
+            let body = event_list_to_html(get_rounds(&mut json), &auth_code, competition).to_string();
+            db.insert_wcif(competition.to_string(), auth_code.to_string(), json).await;
             body
         }
         Err(err) => format!("Failed to load data for competition. Encontured following error: {}", err.error)
@@ -62,28 +66,38 @@ pub async fn root(db: DB, id: String, query: HashMap<String, String>, socket: Op
         .map_err(|_| warp::reject())
 }
 
-pub async fn round(db: DB, query: HashMap<String, String>, socket: Option<SocketAddr>, group_size: u32) -> Result<Response<String>, Rejection> {
+
+pub async fn round(mut db: DB, query: HashMap<String, String>, socket: Option<SocketAddr>, group_size: u32) -> Result<Response<String>, Rejection> {
     is_localhost(socket)?;
     let eventid = &query["eventid"];
-    let round = usize::from_str_radix(&query["round"], 10).unwrap();
-    let mut db_guard = db.lock().await;
-    let wcif = (*db_guard).as_mut().unwrap();
-    let (competitors, map) = crate::wcif::get_competitors_for_round(wcif, eventid, round);
-    drop(db_guard);
-    let str = competitors.iter()
-        .rev()
-        .map(|id|{
-            format!("{}\\r{}", id, map[id])
-        })
-        .collect::<Vec<_>>()
-        .join("\\n");
+    let auth_code = &query["auth_code"];
+    let competition = &query["competition"];
+    let round = query["round"].parse().unwrap();
+    let mut wcif_lock = db.get_wcif_lock(competition.clone(), auth_code.clone()).await;
+    let wcif = wcif_lock.get();
+
+    let response = match wcif {
+        Some(wcif) => {     
+            let (competitors, map) = crate::wcif::get_competitors_for_round(wcif, eventid, round); 
+            let str = competitors.iter()
+                .rev()
+                .map(|id|{
+                    format!("{}\\r{}", id, map[id])
+                })
+                .collect::<Vec<_>>()
+                .join("\\n");
+            crate::compiled::js_replace(&str, competitors.len(), eventid, round, group_size, auth_code, competition)
+        },
+        None => format!("The competition has not been loaded."),
+    };
+    
     Response::builder()
         .header("content-type", "text/html; charset=utf-8")
-        .body(crate::compiled::js_replace(&str, competitors.len(), eventid, round, group_size))
+        .body(response)
         .map_err(|_| warp::reject())
 }
 
-pub(crate) async fn pdf(db: DB, query: HashMap<String, String>, socket: Option<SocketAddr>, stages: Stages, compare: ScorecardOrdering) -> Result<Response<Vec<u8>>, Rejection> {
+pub(crate) async fn pdf(mut db: DB, query: HashMap<String, String>, socket: Option<SocketAddr>, stages: Stages, compare: ScorecardOrdering, client_id: String, redirect_uri: String) -> Result<Response<Vec<u8>>, Rejection> {
     fn assign_stages(groups: Vec<Vec<usize>>, stages: &Stages) -> Vec<Vec<(usize, usize)>> {
         groups.into_iter()
             .map(|group| {
@@ -105,7 +119,10 @@ pub(crate) async fn pdf(db: DB, query: HashMap<String, String>, socket: Option<S
     let round = query["round"].parse().unwrap();
     let group = &query["groups"];
     let wcif = query["wcif"].parse().unwrap();
-    let wcif_oauth = &mut db.lock().await;
+    let competition = &query["competition"];
+    let auth_code = &query["auth_code"];
+    let oauth = wca_oauth::OAuth::get_auth_implicit(client_id, auth_code.clone(), redirect_uri).await;
+
     let groups: Vec<Vec<_>> = group.split("$")
         .map(|group|{
             group.split("s")
@@ -116,8 +133,8 @@ pub(crate) async fn pdf(db: DB, query: HashMap<String, String>, socket: Option<S
         .collect();
 
     let groups_with_stations = assign_stages(groups.clone(), &stages);
-
-    let wcif_oauth = wcif_oauth.as_mut().unwrap();
+    let mut db_lock = db.get_wcif_lock(competition.clone(), auth_code.clone()).await;
+    let mut wcif_oauth = db_lock.get().unwrap();
     if wcif {
         match wcif_oauth.add_groups_to_event(eventid, round, groups.len()) {
             Ok(activities) => {
@@ -132,14 +149,14 @@ pub(crate) async fn pdf(db: DB, query: HashMap<String, String>, socket: Option<S
                         })
                     }
                 }
-                let response = wcif_oauth.patch().await;
+                let response = wcif_oauth.patch(&oauth).await;
                 println!("Patched to wcif. Received the following response: \n{}", response);
             }
             Err(()) => println!("Unable to patch likely because the given event already has groups in the wcif."),
         }
     }
 
-    let bytes = crate::pdf::run_from_wcif(wcif_oauth, eventid, round, groups_with_stations, &stages, compare);
+    let bytes = crate::pdf::run_from_wcif(&mut wcif_oauth, eventid, round, groups_with_stations, &stages, compare);
 
     match bytes {
         Return::Pdf(bytes) => {
@@ -150,7 +167,7 @@ pub(crate) async fn pdf(db: DB, query: HashMap<String, String>, socket: Option<S
         }
         Return::Zip(bytes) => {
             Response::builder()
-                .header("content-type", "application/zip")
+                .header("content-type", "application/zip")                
                 .body(bytes)
                 .map_err(|_| warp::reject())
         }
