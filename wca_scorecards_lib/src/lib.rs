@@ -10,20 +10,6 @@ mod compiled;
 
 pub use pdf::Stages;
 
-static mut LOGGING: bool = false;
-
-pub fn set_logging(b: bool) {
-    unsafe {
-        LOGGING = b;
-    }
-}
-
-pub(crate) fn read_logging() -> bool {
-    unsafe {
-        LOGGING
-    }
-}
-
 #[allow(deprecated)]
 #[deprecated]
 pub fn print_round_1<I>(args: &mut I) where I: Iterator<Item = String> {
@@ -40,8 +26,9 @@ pub fn print_round_1_with_language<I>(args: &mut I, language: Language) where I:
     run(&a, Some(b), &c, language, Stages::new(1, u32::MAX), ScorecardOrdering::Default);
 }
 
+#[allow(unused)]
 pub fn print_subsequent_rounds(competition_id: String, stages: Stages, sort_by_name: bool) {
-    localhost::init(competition_id, stages, ScorecardOrdering::from_bool(sort_by_name));
+    localhost::init(stages, ScorecardOrdering::from_bool(sort_by_name));
 }
 
 pub fn print_round_1_english(groups_csv: &str, limit_csv: Option<String>, competition: &str, stages: Stages, sort_by_name: bool) {

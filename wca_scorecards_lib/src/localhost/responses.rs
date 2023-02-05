@@ -5,20 +5,7 @@ use super::DB;
 use scorecard_to_pdf::Return;
 use wca_oauth::{Assignment, AssignmentCode};
 
-pub fn is_localhost(socket: Option<SocketAddr>) -> Result<(), Rejection> {
-    Ok(())
-    /*if let Some(socket) = socket {
-        let ip = socket.ip();
-        match ip {
-            std::net::IpAddr::V4(ip) if ip == std::net::Ipv4Addr::LOCALHOST => return Ok(()),
-            _ => ()
-        }
-    }
-    Err(warp::reject())*/
-}
-
-pub async fn root(db: DB, id: String, query: HashMap<String, String>, redirect_uri: String, client_id: String, socket: Option<SocketAddr>) -> Result<Response<String>, Rejection> {
-    is_localhost(socket)?;
+pub async fn root(query: HashMap<String, String>, redirect_uri: String, client_id: String) -> Result<Response<String>, Rejection> {
     if !query.contains_key("access_token") {
         return Response::builder()
             .header("content-type", "text/html")
@@ -35,10 +22,12 @@ pub async fn root(db: DB, id: String, query: HashMap<String, String>, redirect_u
             .map_err(|_| warp::reject())
     }
     let auth_token = &query["access_token"];
-    let oauth = wca_oauth::OAuth::get_auth_implicit(
+    let _oauth = wca_oauth::OAuth::get_auth_implicit(
         client_id.into(), 
         auth_token.into(), 
         redirect_uri).await;
+    
+    // TODO: use managed_by_me=true to show list of available competitions.
 
     Response::builder()
         .header("content-type", "text/html")
@@ -67,8 +56,7 @@ pub async fn competition(mut db: DB, query: HashMap<String, String>, client_id: 
 }
 
 
-pub async fn round(mut db: DB, query: HashMap<String, String>, socket: Option<SocketAddr>, group_size: u32) -> Result<Response<String>, Rejection> {
-    is_localhost(socket)?;
+pub async fn round(mut db: DB, query: HashMap<String, String>, group_size: u32) -> Result<Response<String>, Rejection> {
     let eventid = &query["eventid"];
     let auth_code = &query["auth_code"];
     let competition = &query["competition"];
@@ -97,7 +85,7 @@ pub async fn round(mut db: DB, query: HashMap<String, String>, socket: Option<So
         .map_err(|_| warp::reject())
 }
 
-pub(crate) async fn pdf(mut db: DB, query: HashMap<String, String>, socket: Option<SocketAddr>, stages: Stages, compare: ScorecardOrdering, client_id: String, redirect_uri: String) -> Result<Response<Vec<u8>>, Rejection> {
+pub(crate) async fn pdf(mut db: DB, query: HashMap<String, String>, stages: Stages, compare: ScorecardOrdering, client_id: String, redirect_uri: String) -> Result<Response<Vec<u8>>, Rejection> {
     fn assign_stages(groups: Vec<Vec<usize>>, stages: &Stages) -> Vec<Vec<(usize, usize)>> {
         groups.into_iter()
             .map(|group| {
@@ -114,7 +102,6 @@ pub(crate) async fn pdf(mut db: DB, query: HashMap<String, String>, socket: Opti
             .collect()
     }
     
-    is_localhost(socket)?;
     let eventid = &query["eventid"];
     let round = query["round"].parse().unwrap();
     let group = &query["groups"];

@@ -1,4 +1,4 @@
-use std::{sync::Arc, collections::HashMap, net::SocketAddr};
+use std::{collections::HashMap};
 use crate::{wcif::*, Stages, ScorecardOrdering};
 use warp::{Filter, hyper::Response, Rejection};
 
@@ -9,11 +9,10 @@ mod db;
 use html::event_list_to_html;
 use responses::*;
 
-pub use responses::is_localhost;
 pub use db::DB;
 
 #[tokio::main]
-pub(crate) async fn init(id: String, stages: Stages, compare: ScorecardOrdering) {
+pub(crate) async fn init(stages: Stages, compare: ScorecardOrdering) {
     //Url to approve the Oauth application
     let auth_url = "https://www.worldcubeassociation.org/oauth/authorize?client_id=nqbnCQGGO605D_XYpgghZdIN2jDT67LhhUC1kE-Msuk&redirect_uri=http%3A%2F%2Flocalhost%3A5000%2F&response_type=token&scope=public+manage_competitions";
 
@@ -25,14 +24,10 @@ pub(crate) async fn init(id: String, stages: Stages, compare: ScorecardOrdering)
     let redirect_uri = "localhost:5000";
     
     //Handling the get request from authentification. HTTP no s, super secure, everything is awesome. The API said that https is not required for localhost so it is fine.
-    let local_wcif = wcif.clone();
     let root = warp::path::end()
         .and(warp::query::query())
-        .and(warp::addr::remote())
-        .and_then(move |query: HashMap<String, String>, socket: Option<SocketAddr>| {
-            let id = id.clone();
-            let wcif = local_wcif.clone();
-            root(wcif, id, query, redirect_uri.to_string(), client_id.to_string(), socket)
+        .and_then(move |query: HashMap<String, String>| {
+            root(query, redirect_uri.to_string(), client_id.to_string())
         });
 
     //Competition request
@@ -49,23 +44,21 @@ pub(crate) async fn init(id: String, stages: Stages, compare: ScorecardOrdering)
     let group_size = stages.capacity * stages.no;
     let round = warp::path!("round")
         .and(warp::query::query())
-        .and(warp::addr::remote())
-        .and_then(move |query: HashMap<String,String>, socket: Option<SocketAddr>|{
+        .and_then(move |query: HashMap<String,String>,|{
             let wcif = local_wcif.clone();
-            round(wcif, query, socket, group_size)
+            round(wcif, query, group_size)
         });
 
     //Get request for pdf. Query to specify which event, round and groups to be used.
     let local_wcif = wcif.clone();
     let pdf = warp::path!("round" / "pdf")
         .and(warp::query::query())
-        .and(warp::addr::remote())
-        .and_then(move |query: HashMap<String, String>, socket: Option<SocketAddr>|{
+        .and_then(move |query: HashMap<String, String>|{
             let wcif = local_wcif.clone();
             let stages = stages.clone();
             let client_id = client_id.to_string();
             let redirect_uri = redirect_uri.to_string();
-            pdf(wcif, query, socket, stages, compare, client_id, redirect_uri)
+            pdf(wcif, query, stages, compare, client_id, redirect_uri)
         });
 
     let wasm_js = warp::path!("round" / "pkg" / "group_menu.js")
@@ -102,7 +95,7 @@ pub(crate) async fn init(id: String, stages: Stages, compare: ScorecardOrdering)
 
     let serve = warp::serve(routes).run(([127, 0, 0, 1], 5000));
 
-    let mut interval = async_timer::Interval::platform_new(core::time::Duration::from_secs(1));
+    let mut interval = async_timer::Interval::platform_new(core::time::Duration::from_secs(600));
 
     let future = async {
         let mut wcif = wcif.clone();
