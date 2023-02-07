@@ -1,5 +1,6 @@
 mod wcif;
 mod oauth;
+mod competition;
 mod wcif_oauth;
 
 use serde::{Deserializer, Deserialize, Serializer};
@@ -7,6 +8,7 @@ use serde::de::Error;
 pub use wcif::*;
 pub use oauth::*;
 pub use wcif_oauth::*;
+pub use competition::*;
 
 pub use serde_with::chrono::{NaiveDateTime as DateTime, NaiveDate as Date, NaiveTime as Time, Datelike};
 
