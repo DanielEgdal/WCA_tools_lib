@@ -33,4 +33,8 @@ impl Competition {
     pub fn name(&self) -> &str {
         &self.name
     }
+
+    pub fn id(&self) -> &str {
+        &self.id
+    }
 }
