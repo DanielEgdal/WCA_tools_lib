@@ -62,7 +62,10 @@ impl ScorecardOrdering {
     fn sort_slice(&self, slice: &mut [Scorecard<'_>]) {
         match self {
             ScorecardOrdering::Default => slice.sort(),
-            ScorecardOrdering::ByName => slice.sort_by(|a, b| a.id.cmp(&b.id).then(a.cmp(&b))),
+            ScorecardOrdering::ByName => slice.sort_by(|a, b| a.group.cmp(&b.group)
+                .then(a.station.cmp(&b.station))
+                .then(a.id.cmp(&b.id))
+                .then(a.cmp(&b))),
         }
     }
 }

@@ -1,0 +1,21 @@
+<html>
+    <head>
+        <script type="module">
+            let competitions = ARRAY;
+            for (let i = 0; i < competitions.length; i++) {
+                let element = document.getElementById(competitions[i]);
+                element.onclick = (e) => {
+                    let competition = competitions[i];
+                    let no_of_stages = prompt("How many stages");
+                    let no_of_stations = prompt("How many stations per stage");
+                    window.location.href = "competition?auth_code=" + "AUTH_CODE"
+                        + "&competition=" + competition
+                        + ""
+                }
+            }
+        </script>
+    </head>
+    <body>
+        COMPETITIONS
+    </body>
+</html>

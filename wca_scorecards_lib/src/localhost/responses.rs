@@ -65,10 +65,12 @@ pub async fn competition(mut db: DB, query: HashMap<String, String>, client_id: 
 }
 
 
-pub async fn round(mut db: DB, query: HashMap<String, String>, group_size: u32) -> Result<Response<String>, Rejection> {
+pub async fn round(mut db: DB, query: HashMap<String, String>) -> Result<Response<String>, Rejection> {
     let eventid = &query["eventid"];
     let auth_code = &query["auth_code"];
     let competition = &query["competition"];
+    let no = query["no"].parse().unwrap();
+    let capacity = query["capacity"].parse().unwrap();
     let round = query["round"].parse().unwrap();
     let mut wcif_lock = db.get_wcif_lock(competition.clone(), auth_code.clone()).await;
     let wcif = wcif_lock.get();
@@ -83,7 +85,7 @@ pub async fn round(mut db: DB, query: HashMap<String, String>, group_size: u32) 
                 })
                 .collect::<Vec<_>>()
                 .join("\\n");
-            crate::compiled::js_replace(&str, competitors.len(), eventid, round, group_size, auth_code, competition)
+            crate::compiled::js_replace(&str, competitors.len(), eventid, round, auth_code, competition, no, capacity)
         },
         None => format!("The competition has not been loaded."),
     };
@@ -94,7 +96,7 @@ pub async fn round(mut db: DB, query: HashMap<String, String>, group_size: u32) 
         .map_err(|_| warp::reject())
 }
 
-pub(crate) async fn pdf(mut db: DB, query: HashMap<String, String>, stages: Stages, compare: ScorecardOrdering, client_id: String, redirect_uri: String) -> Result<Response<Vec<u8>>, Rejection> {
+pub(crate) async fn pdf(mut db: DB, query: HashMap<String, String>, compare: ScorecardOrdering, client_id: String, redirect_uri: String) -> Result<Response<Vec<u8>>, Rejection> {
     fn assign_stages(groups: Vec<Vec<usize>>, stages: &Stages) -> Vec<Vec<(usize, usize)>> {
         groups.into_iter()
             .map(|group| {
@@ -117,6 +119,9 @@ pub(crate) async fn pdf(mut db: DB, query: HashMap<String, String>, stages: Stag
     let wcif = query["wcif"].parse().unwrap();
     let competition = &query["competition"];
     let auth_code = &query["auth_code"];
+    let no = query["no"].parse().unwrap();
+    let capacity = query["capacity"].parse().unwrap();
+    let stages = Stages::new(no, capacity);
     let oauth = wca_oauth::OAuth::get_auth_implicit(client_id, auth_code.clone(), redirect_uri).await;
 
     let groups: Vec<Vec<_>> = group.split("$")

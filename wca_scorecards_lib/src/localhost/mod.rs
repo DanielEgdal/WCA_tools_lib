@@ -41,12 +41,11 @@ pub(crate) async fn init(stages: Stages, compare: ScorecardOrdering) {
 
     //Get request for specific round. Query to specify which event and round is to be used.
     let local_wcif = wcif.clone();
-    let group_size = stages.capacity * stages.no;
     let round = warp::path!("round")
         .and(warp::query::query())
         .and_then(move |query: HashMap<String,String>,|{
             let wcif = local_wcif.clone();
-            round(wcif, query, group_size)
+            round(wcif, query)
         });
 
     //Get request for pdf. Query to specify which event, round and groups to be used.
@@ -55,10 +54,9 @@ pub(crate) async fn init(stages: Stages, compare: ScorecardOrdering) {
         .and(warp::query::query())
         .and_then(move |query: HashMap<String, String>|{
             let wcif = local_wcif.clone();
-            let stages = stages.clone();
             let client_id = client_id.to_string();
             let redirect_uri = redirect_uri.to_string();
-            pdf(wcif, query, stages, compare, client_id, redirect_uri)
+            pdf(wcif, query, compare, client_id, redirect_uri)
         });
 
     let wasm_js = warp::path!("round" / "pkg" / "group_menu.js")
