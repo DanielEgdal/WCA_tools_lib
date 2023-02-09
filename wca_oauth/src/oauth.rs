@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use reqwest::Client;
 use serde::Deserialize;
 use crate::*;
+use crate::Competition;
 
 #[derive(Deserialize)]
 struct AuthResponse {
@@ -111,6 +112,20 @@ impl OAuth {
     pub async fn get_wcif(&self, id: &str) -> WcifResult {
         let json = self.get_wcif_api(id).await;
         parse(json)
+    }
+
+    pub async fn get_competitions_managed_by_me(&self) -> Vec<Competition> {
+        let url = "https://www.worldcubeassociation.org/api/v0/competitions?managed_by_me=true";
+
+        let json = self.client
+            .get(url)
+            .header("Authorization", format!("Bearer {}", self.access_token))
+            .send()
+            .await.unwrap()
+            .text()
+            .await.unwrap();
+        
+        Competition::from_json(&json)
     }
 
     async fn patch_wcif(&self, wcif: &Wcif, id: &str) -> String {
