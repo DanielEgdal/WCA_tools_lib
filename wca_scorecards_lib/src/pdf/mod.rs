@@ -88,7 +88,7 @@ pub(crate) fn run(groups_csv: &str, limit_csv: Option<String>, competition: &str
                 round: 1,
                 station,
                 event,
-                stage: station.map(|x| x as u32 / stages.capacity),
+                stage: station.map(|x| x as u32 - 1 / stages.capacity),
             }
         })
         .collect::<Vec<_>>();
@@ -154,7 +154,7 @@ pub(crate) fn run_from_wcif(wcif: &mut WcifContainer, event: &str, round: usize,
                         group: n,
                         station: Some(station),
                         id,
-                        stage: Some(station as u32 / stages.capacity),
+                        stage: Some((station as u32 - 1) / stages.capacity),
                     }
                 })
         }).flatten()
