@@ -54,6 +54,17 @@ pub fn blank_scorecard_page(competition: &str) {
     save_pdf(scorecard_to_pdf::blank_scorecard_page(competition, &Language::english()), competition, "blank_").unwrap();
 }
 
+pub fn round_1_scorecards_in_memory_for_python(groups_csv: String, limit_csv: Option<String>, competition: &str, no_stages: u32, per_stage: u32, sort_by_name: bool)-> Vec<u8> {
+    let compare = ScorecardOrdering::from_bool(sort_by_name);
+    let stages = Stages::new(no_stages,per_stage);
+    let scorecards = run(&groups_csv, limit_csv, competition, Language::english(), stages, compare);
+    let (data, _name) = match scorecards {
+        Return::Pdf(b) => (b, ".pdf"),
+        Return::Zip(b) => (b, ".zip")
+    };
+    data
+}
+
 #[derive(Clone, Copy)]
 pub(crate) enum ScorecardOrdering {
     Default,
