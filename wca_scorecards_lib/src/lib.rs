@@ -1,5 +1,5 @@
 use pdf::{run, save_pdf};
-use scorecard_to_pdf::{Language, Scorecard};
+use scorecard_to_pdf::{Language, Scorecard, Return};
 
 mod pdf;
 pub(crate) mod wcif;
