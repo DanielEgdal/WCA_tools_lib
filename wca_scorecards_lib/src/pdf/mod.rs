@@ -88,7 +88,7 @@ pub(crate) fn run(groups_csv: &str, limit_csv: Option<String>, competition: &str
                 round: 1,
                 station,
                 event,
-                stage: station.map(|x| x as u32 - 1 / stages.capacity),
+                stage: station.map(|x| (x as u32 - 1) / stages.capacity),
             }
         })
         .collect::<Vec<_>>();
