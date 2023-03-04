@@ -5,7 +5,7 @@ use warp::{Filter, hyper::Response, Rejection};
 use wca_oauth::WcifOAuth;
 
 mod html;
-mod responses;
+pub mod responses;
 
 use html::event_list_to_html;
 use responses::*;

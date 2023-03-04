@@ -232,6 +232,13 @@ impl WcifContainer {
         })
     }
 
+    pub fn reg_ids_of_delegates(&self) -> Vec<usize> {
+        self.persons_iter()
+            .filter(|person| person.roles.contains(&Role::Delegate) || person.roles.contains(&Role::TraineeDelegate))
+            .filter_map(|person| person.registrant_id)
+            .collect()
+    }
+
     pub fn overlapping_activities<'a>(&'a self) -> Vec<(&'a Activity, &'a Activity)> {
         self.schedule_activity_iter()
             .map(|act_1|{

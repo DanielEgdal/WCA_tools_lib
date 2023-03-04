@@ -2,11 +2,12 @@ use pdf::{run, save_pdf};
 use scorecard_to_pdf::{Language, Scorecard};
 
 mod pdf;
-pub(crate) mod wcif;
+pub mod wcif;
 mod localhost;
 mod compiled;
 
 pub use pdf::Stages;
+pub use localhost::responses::generate_pdf;
 
 static mut LOGGING: bool = false;
 
@@ -55,7 +56,7 @@ pub fn blank_scorecard_page(competition: &str) {
 }
 
 #[derive(Clone, Copy)]
-pub(crate) enum ScorecardOrdering {
+pub enum ScorecardOrdering {
     Default,
     ByName,
 }

@@ -34,7 +34,7 @@ impl<'de> Visitor<'de> for RoleVisitor {
             E: serde::de::Error, {
         Ok(match v {
             "delegate" => Role::Delegate,
-            "trainee_delegate" => Role::TraineeDelegate,
+            "trainee-delegate" => Role::TraineeDelegate,
             "organizer" => Role::Organizer,
             v => Role::Other(v.to_string())
         })
@@ -47,7 +47,7 @@ impl Serialize for Role {
             S: serde::Serializer {
         serializer.serialize_str(match self {
             Role::Delegate => "delegate",
-            Role::TraineeDelegate => "trainee_delegate",
+            Role::TraineeDelegate => "trainee-delegate",
             Role::Organizer => "organizer",
             Role::Other(v) => v
         })

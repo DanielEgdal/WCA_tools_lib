@@ -5,7 +5,7 @@ use super::DB;
 use crate::read_logging;
 
 use scorecard_to_pdf::Return;
-use wca_oauth::{Assignment, AssignmentCode};
+use wca_oauth::{Assignment, AssignmentCode, WcifOAuth};
 
 pub fn is_localhost(socket: Option<SocketAddr>) -> Result<(), Rejection> {
     if let Some(socket) = socket {
@@ -84,6 +84,43 @@ pub async fn round(db: DB, query: HashMap<String, String>, socket: Option<Socket
 }
 
 pub(crate) async fn pdf(db: DB, query: HashMap<String, String>, socket: Option<SocketAddr>, stages: Stages, compare: ScorecardOrdering) -> Result<Response<Vec<u8>>, Rejection> {
+    is_localhost(socket)?;
+    let eventid = &query["eventid"];
+    let round = query["round"].parse().unwrap();
+    let group = &query["groups"];
+    let wcif = query["wcif"].parse().unwrap();
+    let wcif_oauth = &mut db.lock().await;
+    let groups: Vec<Vec<_>> = group.split("$")
+        .map(|group|{
+            group.split("s")
+                .map(str::parse)
+                .filter_map(Result::ok)
+                .collect()
+        })
+        .collect();
+
+    let wcif_oauth = wcif_oauth.as_mut().unwrap();
+
+    let bytes = generate_pdf(eventid, round, groups, wcif, wcif_oauth, &stages, compare).await;
+
+    match bytes {
+        Return::Pdf(bytes) => {
+            Response::builder()
+                .header("content-type", "application/pdf")
+                .body(bytes)
+                .map_err(|_| warp::reject())
+        }
+        Return::Zip(bytes) => {
+            Response::builder()
+                .header("content-type", "application/zip")
+                .body(bytes)
+                .map_err(|_| warp::reject())
+        }
+    }
+
+}
+    
+pub async fn generate_pdf(eventid: &str, round: usize, groups: Vec<Vec<usize>>, wcif: bool, wcif_oauth: &mut WcifOAuth, stages: &Stages, compare: ScorecardOrdering) -> Return {
     fn assign_stages(groups: Vec<Vec<usize>>, stages: &Stages) -> Vec<Vec<(usize, usize)>> {
         groups.into_iter()
             .map(|group| {
@@ -100,24 +137,8 @@ pub(crate) async fn pdf(db: DB, query: HashMap<String, String>, socket: Option<S
             .collect()
     }
     
-    is_localhost(socket)?;
-    let eventid = &query["eventid"];
-    let round = query["round"].parse().unwrap();
-    let group = &query["groups"];
-    let wcif = query["wcif"].parse().unwrap();
-    let wcif_oauth = &mut db.lock().await;
-    let groups: Vec<Vec<_>> = group.split("$")
-        .map(|group|{
-            group.split("s")
-                .map(str::parse)
-                .filter_map(Result::ok)
-                .collect()
-        })
-        .collect();
+    let groups_with_stations = assign_stages(groups.clone(), stages);
 
-    let groups_with_stations = assign_stages(groups.clone(), &stages);
-
-    let wcif_oauth = wcif_oauth.as_mut().unwrap();
     if wcif {
         match wcif_oauth.add_groups_to_event(eventid, round, groups.len()) {
             Ok(activities) => {
@@ -139,20 +160,5 @@ pub(crate) async fn pdf(db: DB, query: HashMap<String, String>, socket: Option<S
         }
     }
 
-    let bytes = crate::pdf::run_from_wcif(wcif_oauth, eventid, round, groups_with_stations, &stages, compare);
-
-    match bytes {
-        Return::Pdf(bytes) => {
-            Response::builder()
-                .header("content-type", "application/pdf")
-                .body(bytes)
-                .map_err(|_| warp::reject())
-        }
-        Return::Zip(bytes) => {
-            Response::builder()
-                .header("content-type", "application/zip")
-                .body(bytes)
-                .map_err(|_| warp::reject())
-        }
-    }
+    crate::pdf::run_from_wcif(wcif_oauth, eventid, round, groups_with_stations, &stages, compare)
 }
