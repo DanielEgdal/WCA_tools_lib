@@ -281,6 +281,18 @@ impl WcifContainer {
             _ => Err(())
         }
     }
+
+    /// Returns true if there exists groups for the round. Will panic if the event-round pair does exist.
+    pub fn detect_round_groups_exist(&self, event: &str, round: usize) -> bool{
+        let act = self.wcif.schedule.venues.iter()
+            .flat_map(|v|&v.rooms)
+            .flat_map(|r|&r.activities)
+            .find(|a|a.activity_code.contains(&format!("{event}-r{round}")))
+            .map(|a|{
+            !a.child_activities.is_empty()}
+        ).expect("check that your event and round number is correct");
+        act
+    }
 }
 
 struct ActivityIter<'a> {
