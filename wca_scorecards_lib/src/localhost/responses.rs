@@ -68,7 +68,7 @@ pub async fn round(db: DB, query: HashMap<String, String>, socket: Option<Socket
     let round = usize::from_str_radix(&query["round"], 10).unwrap();
     let mut db_guard = db.lock().await;
     let wcif = (*db_guard).as_mut().unwrap();
-    let (competitors, map) = crate::wcif::get_competitors_for_round(wcif, eventid, round);
+    let (competitors, map) = crate::wcif::wca_live_get_competitors_for_round(wcif, eventid, round);
     drop(db_guard);
     let str = competitors.iter()
         .rev()
