@@ -40,6 +40,36 @@ pub fn get_time_limit(wcif: &mut WcifContainer, event: &str, round: usize) -> Ti
     }
 }
 
+pub fn wca_live_get_competitors_for_round(wcif: &mut WcifContainer, event: &str, round: usize) -> (Vec<usize>, HashMap<usize, String>) {
+    let id_map = get_id_map(wcif);
+    // Get the previous round, so we can sort people correctly by speed.
+    let round_json_prev = get_round_json(wcif, event, round - 1);
+    let advancement_ids_prev: HashMap<_, _> = match round_json_prev {
+        Some(v) => {
+            v.results.iter().map(|r| (r.person_id, r.ranking.expect("This is a previous round, so there is a ranking"))).collect()
+        },
+        None => {
+            HashMap::new()
+        }
+    };
+
+    // Now actually get those who proceeded
+    let round_json = get_round_json(wcif, event, round).expect("Round should exist");
+    let mut advancement_ids = wca_live_get_advancement_ids(&round_json);
+    if !advancement_ids.is_empty(){
+        if !advancement_ids_prev.is_empty(){
+            advancement_ids.sort_by_key(|&x| advancement_ids_prev.get(&x).unwrap_or(&std::usize::MAX));
+            (advancement_ids, id_map)
+        }
+        else{
+            (advancement_ids, id_map)
+        }
+    }
+    else{
+        get_competitors_for_round(wcif,event,round)
+    }
+}
+
 pub fn get_competitors_for_round(wcif: &mut WcifContainer, event: &str, round: usize) -> (Vec<usize>, HashMap<usize, String>) {
     let id_map = get_id_map(wcif);
     let round_json = get_round_json(wcif, event, round - 1);
@@ -90,6 +120,12 @@ fn get_advancement_amount(round: &Round, advancement_condition: &Option<Advancem
 
 pub fn get_id_map(wcif: &WcifContainer) -> HashMap<usize, String> {
     wcif.persons_iter().filter_map(|p| p.registrant_id.map(|v|(v, p.name.clone()))).collect()
+}
+
+fn wca_live_get_advancement_ids(round: &Round) -> Vec<usize> {
+    let advacenment_ids = round.results.iter().map(|f|
+    f.person_id).collect();
+    advacenment_ids
 }
 
 fn get_advancement_ids(round: &Round, advancement_condition: &Option<AdvancementCondition>) -> Vec<usize> {
